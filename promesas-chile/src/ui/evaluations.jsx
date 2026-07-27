@@ -1086,7 +1086,9 @@ function EvalDetail({ ev, onClose }) {
   });
   const removeSwimmer = (id) => { setWSwimmerIds(ids => ids.filter(x => x !== id)); setRemovingSwimmer(null); };
   const save = () => {
-    DB.updateEvaluation(ev.id, { data: wData, swimmerIds: wSwimmerIds, notas: wNotas });
+    const cleanData = {};
+    wSwimmerIds.forEach(id => { if (wData[id]) cleanData[id] = wData[id]; });
+    DB.updateEvaluation(ev.id, { data: cleanData, swimmerIds: wSwimmerIds, notas: wNotas });
     toast('Evaluación actualizada');
     setEditMode(false);
   };

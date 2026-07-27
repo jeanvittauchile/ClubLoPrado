@@ -264,16 +264,17 @@ function ReportPaper({ st, ym, yy, mm, dar, activeDays, attRows, totalPresent, p
                 {monthEvals.map(e => {
                   const proto = protoById(e.protocolo);
                   const m = metricMeta(e.metrica);
+                  const activeData = e.swimmerIds.map(id => e.data[id]).filter(Boolean);
                   let res = '—';
                   if (e.metrica === 'cronometro') {
-                    const totals = Object.values(e.data).map(d => d.total != null ? d.total : d.totalNado).filter(v => v != null);
+                    const totals = activeData.map(d => d.total != null ? d.total : d.totalNado).filter(v => v != null);
                     if (totals.length) res = `Mejor nado ${fmtTime(Math.min(...totals))}`;
                   } else if (e.metrica === 'compuesta') {
                     const times = [];
-                    Object.values(e.data).forEach(d => (d.intentos || []).forEach(it => { if (it.tiempo) times.push(it.tiempo); }));
+                    activeData.forEach(d => (d.intentos || []).forEach(it => { if (it.tiempo) times.push(it.tiempo); }));
                     if (times.length) res = `Mejor tiempo ${fmtTime(Math.min(...times))}`;
                   } else {
-                    const avgs = Object.values(e.data).map(d => d.tramos && d.tramos.length ? d.tramos.reduce((a, b) => a + b, 0) / d.tramos.length : null).filter(v => v != null);
+                    const avgs = activeData.map(d => d.tramos && d.tramos.length ? d.tramos.reduce((a, b) => a + b, 0) / d.tramos.length : null).filter(v => v != null);
                     if (avgs.length) res = `Prom. ${(avgs.reduce((a, b) => a + b, 0) / avgs.length).toFixed(1)} por tramo`;
                   }
                   return (

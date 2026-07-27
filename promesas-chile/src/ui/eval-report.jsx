@@ -119,7 +119,7 @@ function EvalReport({ st, ym }) {
   function rankSeries(protoId) {
     const evs = cronoSeries.filter(e => e.protocolo === protoId);
     const byS = {};
-    evs.forEach(e => Object.entries(e.data).forEach(([id, d]) => {
+    evs.forEach(e => Object.entries(e.data).filter(([id]) => e.swimmerIds.includes(id)).forEach(([id, d]) => {
       if (!d.laps || !d.laps.length) return;
       (byS[id] = byS[id] || []).push(...d.laps.filter(v => v != null));
     }));
@@ -140,7 +140,7 @@ function EvalReport({ st, ym }) {
     progXLabels = dates.map(d => fmtDate(d).replace(/ \d{4}$/, ''));
     const perSwimmer = {};
     cronoSeries.filter(e => e.protocolo === progProto.p).forEach(e => {
-      Object.entries(e.data).forEach(([id, d]) => {
+      Object.entries(e.data).filter(([id]) => e.swimmerIds.includes(id)).forEach(([id, d]) => {
         const laps = (d.laps || []).filter(v => v != null);
         if (!laps.length) return;
         const avg = laps.reduce((a, b) => a + b, 0) / laps.length;
@@ -160,7 +160,7 @@ function EvalReport({ st, ym }) {
   function rankComp(protoId) {
     const evs = compEvals.filter(e => e.protocolo === protoId);
     const byS = {};
-    evs.forEach(e => Object.entries(e.data).forEach(([id, d]) => {
+    evs.forEach(e => Object.entries(e.data).filter(([id]) => e.swimmerIds.includes(id)).forEach(([id, d]) => {
       (d.intentos || []).forEach(it => { if (it.tiempo != null) (byS[id] = byS[id] || []).push(it.tiempo); });
     }));
     return Object.entries(byS).map(([id, ts]) => ({ id, label: swName(id), value: Math.min(...ts), avg: ts.reduce((a, b) => a + b, 0) / ts.length, count: ts.length }))
@@ -171,7 +171,7 @@ function EvalReport({ st, ym }) {
   function rankCount(metric) {
     const evs = evals.filter(e => e.metrica === metric);
     const byS = {};
-    evs.forEach(e => Object.entries(e.data).forEach(([id, d]) => {
+    evs.forEach(e => Object.entries(e.data).filter(([id]) => e.swimmerIds.includes(id)).forEach(([id, d]) => {
       if (!d.tramos || !d.tramos.length) return;
       (byS[id] = byS[id] || []).push(...d.tramos.filter(v => v != null));
     }));
