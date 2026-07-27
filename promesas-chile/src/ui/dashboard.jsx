@@ -132,18 +132,22 @@ function Dashboard({ go }) {
           <div className="card">
             <div className="card-head"><div className="ico"><Icon name="clock" /></div><h3>Próximos entrenamientos</h3></div>
             <div className="card-pad" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {upcoming.length === 0 ? <Empty icon="calendar" title="Nada programado" /> : upcoming.map(t => (
-                <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
-                  <div style={{ textAlign: 'center', flex: '0 0 44px', background: 'var(--surface-2)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', padding: '6px 0' }}>
-                    <div style={{ fontSize: 16, fontFamily: 'var(--font-head)', fontWeight: 700, lineHeight: 1, color: 'var(--navy)' }}>{new Date(t.fecha + 'T00:00:00').getDate()}</div>
-                    <div style={{ fontSize: 9.5, color: 'var(--slate-400)', textTransform: 'uppercase' }}>{MONTHS[new Date(t.fecha + 'T00:00:00').getMonth()].slice(0, 3)}</div>
+              {upcoming.length === 0 ? <Empty icon="calendar" title="Nada programado" /> : upcoming.map(t => {
+                const d = new Date(t.fecha + 'T00:00:00');
+                const valid = !isNaN(d.getTime());
+                return (
+                  <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+                    <div style={{ textAlign: 'center', flex: '0 0 44px', background: 'var(--surface-2)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', padding: '6px 0' }}>
+                      <div style={{ fontSize: 16, fontFamily: 'var(--font-head)', fontWeight: 700, lineHeight: 1, color: 'var(--navy)' }}>{valid ? d.getDate() : '—'}</div>
+                      <div style={{ fontSize: 9.5, color: 'var(--slate-400)', textTransform: 'uppercase' }}>{valid ? MONTHS[d.getMonth()].slice(0, 3) : ''}</div>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--ink)' }}>{t.titulo}</div>
+                      <div style={{ fontSize: 12, color: 'var(--slate-400)' }}>{t.tipo} · {t.duracion} min</div>
+                    </div>
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--ink)' }}>{t.titulo}</div>
-                    <div style={{ fontSize: 12, color: 'var(--slate-400)' }}>{t.tipo} · {t.duracion} min</div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

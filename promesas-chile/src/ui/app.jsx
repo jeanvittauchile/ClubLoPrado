@@ -153,6 +153,28 @@ function Shell() {
   );
 }
 
+/* ---------- Red de seguridad ante errores inesperados ---------- */
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error) { return { error }; }
+  componentDidCatch(error, info) { console.error('[ErrorBoundary]', error, info); }
+  render() {
+    if (!this.state.error) return this.props.children;
+    return (
+      <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: 'var(--bg)', padding: 24 }}>
+        <div style={{ textAlign: 'center', maxWidth: 420 }}>
+          <img src={LOGO} alt="" style={{ width: 100, opacity: .9, marginBottom: 16 }} />
+          <h2 style={{ marginBottom: 8 }}>Algo salió mal</h2>
+          <p style={{ color: 'var(--slate-500)', marginBottom: 18 }}>
+            Ocurrió un error inesperado al mostrar esta pantalla. Tus datos están a salvo — intenta recargar.
+          </p>
+          <Button onClick={() => window.location.reload()}>Recargar</Button>
+        </div>
+      </div>
+    );
+  }
+}
+
 /* ---------- Cargando ---------- */
 function Splash({ text = 'Cargando…' }) {
   return (
@@ -245,8 +267,10 @@ function Root() {
 
 export default function App() {
   return (
-    <ToastProvider>
-      <Root />
-    </ToastProvider>
+    <ErrorBoundary>
+      <ToastProvider>
+        <Root />
+      </ToastProvider>
+    </ErrorBoundary>
   );
 }

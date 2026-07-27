@@ -111,13 +111,15 @@ function TrainingForm({ initial, presetDate, onSave, onClose }) {
 }
 
 function TrainingCard({ t, onEdit, onDelete, highlight }) {
+  const trDate = new Date(t.fecha + 'T00:00:00');
+  const trDateValid = !isNaN(trDate.getTime());
   return (
     <div className="card card-pad" style={{ borderColor: highlight ? 'var(--cyan)' : 'var(--line)', boxShadow: highlight ? '0 0 0 3px var(--cyan-050)' : 'var(--shadow-sm)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', minWidth: 0 }}>
           <div style={{ textAlign: 'center', flex: '0 0 52px', background: 'var(--navy)', color: '#fff', borderRadius: 'var(--r-md)', padding: '8px 0' }}>
-            <div style={{ fontSize: 20, fontFamily: 'var(--font-head)', fontWeight: 700, lineHeight: 1 }}>{new Date(t.fecha + 'T00:00:00').getDate()}</div>
-            <div style={{ fontSize: 10.5, opacity: .7, textTransform: 'uppercase', marginTop: 2 }}>{MONTHS[new Date(t.fecha + 'T00:00:00').getMonth()].slice(0, 3)}</div>
+            <div style={{ fontSize: 20, fontFamily: 'var(--font-head)', fontWeight: 700, lineHeight: 1 }}>{trDateValid ? trDate.getDate() : '—'}</div>
+            <div style={{ fontSize: 10.5, opacity: .7, textTransform: 'uppercase', marginTop: 2 }}>{trDateValid ? MONTHS[trDate.getMonth()].slice(0, 3) : ''}</div>
           </div>
           <div style={{ minWidth: 0 }}>
             <div style={{ display: 'flex', gap: 8, marginBottom: 5, flexWrap: 'wrap' }}>

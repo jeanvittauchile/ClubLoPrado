@@ -191,11 +191,13 @@ export const WD_SHORT = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 export function fmtDate(iso) {
   if (!iso) return '—';
   const d = new Date(iso + (iso.length === 10 ? 'T00:00:00' : ''));
+  if (isNaN(d.getTime())) return '—';
   return `${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3).toLowerCase()} ${d.getFullYear()}`;
 }
 export function fmtDateLong(iso) {
   if (!iso) return '—';
   const d = new Date(iso + (iso.length === 10 ? 'T00:00:00' : ''));
+  if (isNaN(d.getTime())) return '—';
   return `${WD_SHORT[d.getDay()]} ${d.getDate()} de ${MONTHS[d.getMonth()]}, ${d.getFullYear()}`;
 }
 export function todayISO() { return new Date().toISOString().slice(0, 10); }
