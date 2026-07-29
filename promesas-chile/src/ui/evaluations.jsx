@@ -144,6 +144,33 @@ function RemoveSwimmerButton({ swimmer, hasData, onRemove }) {
   );
 }
 
+/* ---------- Agregar nadador rezagado a la sesión activa ---------- */
+function AddSwimmerModal({ st, excludeIds, onAdd, onClose }) {
+  const [sel, setSel] = useState([]);
+  const available = st.swimmers.filter(s => s.group === 'DAR' && !excludeIds.includes(s.id)).sort((a, b) => a.nombre.localeCompare(b.nombre));
+  const toggle = (id) => setSel(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
+  const add = () => { sel.forEach(id => onAdd(id)); onClose(); };
+  return (
+    <Modal title="Agregar nadador" sub="Se suma a la evaluación en curso, sin afectar lo ya registrado" onClose={onClose}
+      foot={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button icon="check" disabled={sel.length === 0} onClick={add}>Agregar{sel.length > 0 ? ` (${sel.length})` : ''}</Button></>}>
+      {available.length === 0 ? <Empty icon="users" title="No hay más nadadores DAR disponibles" /> : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
+          {available.map(s => (
+            <button key={s.id} className="swim-pick" data-on={sel.includes(s.id)} onClick={() => toggle(s.id)}>
+              <Avatar name={s.nombre} size={34} />
+              <div style={{ minWidth: 0, textAlign: 'left' }}>
+                <div style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.nombre}</div>
+                <div style={{ fontSize: 11.5, color: 'var(--slate-400)' }}>{DB.categoryFor(s.fechaNacimiento)}</div>
+              </div>
+              <div className={`swim-check ${sel.includes(s.id) ? 'on' : ''}`}>{sel.includes(s.id) && <Icon name="check" />}</div>
+            </button>
+          ))}
+        </div>
+      )}
+    </Modal>
+  );
+}
+
 /* ---------- Setup screen ---------- */
 function EvalSetup({ onStart, onCancel }) {
   const st = useStore();
@@ -279,7 +306,8 @@ function EvalRecorder({ config, onSave, onCancel }) {
   const toast = useToast();
   const proto = protoById(config.protocolo);
   const meta = metricMeta(config.metrica);
-  const swimmers = config.swimmerIds.map(id => st.swimmers.find(s => s.id === id)).filter(Boolean);
+  const [added, setAdded] = useState([]); // swimmers joined mid-recording
+  const swimmers = [...config.swimmerIds, ...added].map(id => st.swimmers.find(s => s.id === id)).filter(Boolean);
   const [removed, setRemoved] = useState(() => new Set());
   const activeSwimmers = swimmers.filter(s => !removed.has(s.id));
   const [active, setActive] = useState(config.swimmerIds[0]);
@@ -289,6 +317,7 @@ function EvalRecorder({ config, onSave, onCancel }) {
     return d;
   });
   const [notas, setNotas] = useState('');
+  const [showAdd, setShowAdd] = useState(false);
   const sw = useStopwatch();
   const [counter, setCounter] = useState(0);
   const [editingLap, setEditingLap] = useState(null); // index
@@ -298,6 +327,10 @@ function EvalRecorder({ config, onSave, onCancel }) {
   const removeSwimmer = (id) => {
     setRemoved(r => new Set([...r, id]));
     if (active === id) { const next = activeSwimmers.find(s => s.id !== id); if (next) setActive(next.id); }
+  };
+  const addSwimmer = (id) => {
+    setAdded(a => a.includes(id) ? a : [...a, id]);
+    setData(d => d[id] ? d : { ...d, [id]: config.metrica === 'cronometro' ? { laps: [] } : { tramos: [] } });
   };
 
   const lap = () => {
@@ -374,7 +407,12 @@ function EvalRecorder({ config, onSave, onCancel }) {
             </div>
           );
         })}
+        <button className="rec-swim rec-swim-add" onClick={() => setShowAdd(true)} title="Agregar nadador rezagado">
+          <Icon name="plus" style={{ width: 15, height: 15 }} />
+          <span className="rs-name">Agregar</span>
+        </button>
       </div>
+      {showAdd && <AddSwimmerModal st={st} excludeIds={swimmers.map(s => s.id)} onAdd={addSwimmer} onClose={() => setShowAdd(false)} />}
 
       {activeSwimmers.length === 0 ? (
         <div className="card"><Empty icon="users" title="No quedan nadadores en esta sesión">Se quitaron todos los nadadores. Descarta la evaluación o vuelve atrás.</Empty></div>
@@ -501,7 +539,8 @@ function CompoundRecorder({ config, onSave, onCancel }) {
   const toast = useToast();
   const proto = protoById(config.protocolo);
   const meta = metricMeta('compuesta');
-  const swimmers = config.swimmerIds.map(id => st.swimmers.find(s => s.id === id)).filter(Boolean);
+  const [added, setAdded] = useState([]); // swimmers joined mid-recording
+  const swimmers = [...config.swimmerIds, ...added].map(id => st.swimmers.find(s => s.id === id)).filter(Boolean);
   const [removed, setRemoved] = useState(() => new Set());
   const activeSwimmers = swimmers.filter(s => !removed.has(s.id));
   const [active, setActive] = useState(config.swimmerIds[0]);
@@ -510,6 +549,7 @@ function CompoundRecorder({ config, onSave, onCancel }) {
   });
   const [counts, setCounts] = useState(() => { const c = {}; proto.metricas.forEach(m => c[m] = 0); return c; });
   const [notas, setNotas] = useState('');
+  const [showAdd, setShowAdd] = useState(false);
   const [editingIntento, setEditingIntento] = useState(null); // index
   const sw = useStopwatch();
   const activeSwimmer = swimmers.find(s => s.id === active);
@@ -518,6 +558,10 @@ function CompoundRecorder({ config, onSave, onCancel }) {
   const removeSwimmer = (id) => {
     setRemoved(r => new Set([...r, id]));
     if (active === id) { const next = activeSwimmers.find(s => s.id !== id); if (next) { setActive(next.id); resetEntry(); } }
+  };
+  const addSwimmer = (id) => {
+    setAdded(a => a.includes(id) ? a : [...a, id]);
+    setData(d => d[id] ? d : { ...d, [id]: { intentos: [] } });
   };
 
   const setCount = (m, v) => setCounts(c => ({ ...c, [m]: Math.max(0, v) }));
@@ -577,7 +621,12 @@ function CompoundRecorder({ config, onSave, onCancel }) {
             <RemoveSwimmerButton swimmer={s} hasData={data[s.id].intentos.length > 0} onRemove={() => removeSwimmer(s.id)} />
           </div>
         ))}
+        <button className="rec-swim rec-swim-add" onClick={() => setShowAdd(true)} title="Agregar nadador rezagado">
+          <Icon name="plus" style={{ width: 15, height: 15 }} />
+          <span className="rs-name">Agregar</span>
+        </button>
       </div>
+      {showAdd && <AddSwimmerModal st={st} excludeIds={swimmers.map(s => s.id)} onAdd={addSwimmer} onClose={() => setShowAdd(false)} />}
 
       {activeSwimmers.length === 0 ? (
         <div className="card"><Empty icon="users" title="No quedan nadadores en esta sesión">Se quitaron todos los nadadores. Descarta la evaluación o vuelve atrás.</Empty></div>
@@ -662,7 +711,8 @@ function MultiRecorder({ config, onSave, onCancel }) {
   const toast = useToast();
   const proto = protoById(config.protocolo);
   const meta = metricMeta('cronometro');
-  const swimmers = config.swimmerIds.map(id => st.swimmers.find(s => s.id === id)).filter(Boolean);
+  const [added, setAdded] = useState([]); // swimmers joined mid-recording
+  const swimmers = [...config.swimmerIds, ...added].map(id => st.swimmers.find(s => s.id === id)).filter(Boolean);
   const [removed, setRemoved] = useState(() => new Set());
   const activeSwimmers = swimmers.filter(s => !removed.has(s.id));
   const [data, setData] = useState(() => { const d = {}; config.swimmerIds.forEach(id => { d[id] = { laps: [] }; }); return d; });
@@ -672,6 +722,7 @@ function MultiRecorder({ config, onSave, onCancel }) {
   const [phase, setPhase] = useState('idle');      // idle | nado | descanso
   const [tapped, setTapped] = useState({});        // which swimmers recorded this ronda
   const [notas, setNotas] = useState('');
+  const [showAdd, setShowAdd] = useState(false);
   const [editingLap, setEditingLap] = useState(null); // { id, index }
   const sw = useStopwatch();
   const reps = proto.repeticiones;
@@ -681,6 +732,11 @@ function MultiRecorder({ config, onSave, onCancel }) {
   const uncorr = (val, id) => val == null ? null : +(val + (offsets[id] || 0)).toFixed(2);
   const setOffset = (id, v) => setOffsets(o => ({ ...o, [id]: v }));
   const removeSwimmer = (id) => setRemoved(r => new Set([...r, id]));
+  const addSwimmer = (id) => {
+    setAdded(a => a.includes(id) ? a : [...a, id]);
+    setData(d => d[id] ? d : { ...d, [id]: { laps: [] } });
+    setOffsets(o => o[id] !== undefined ? o : { ...o, [id]: 0 });
+  };
 
   // Start a new nado ronda — clock always restarts from 0
   const iniciarRonda = () => {
@@ -831,7 +887,12 @@ function MultiRecorder({ config, onSave, onCancel }) {
             </div>
           );
         })}
+        <button className="multi-card multi-card-add" onClick={() => setShowAdd(true)} title="Agregar nadador rezagado" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer', border: '1.5px dashed var(--line)', background: 'transparent' }}>
+          <Icon name="plus" style={{ width: 22, height: 22, stroke: 'var(--slate-400)' }} />
+          <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--slate-500)' }}>Agregar nadador</span>
+        </button>
       </div>
+      {showAdd && <AddSwimmerModal st={st} excludeIds={swimmers.map(s => s.id)} onAdd={addSwimmer} onClose={() => setShowAdd(false)} />}
       {editingLap && (
         <EditEntryModal title={`Vuelta ${editingLap.index + 1} · ${swimmers.find(s => s.id === editingLap.id)?.nombre?.split(' ')[0]}`}
           fields={[{ key: 'v', type: 'time', label: 'Tiempo', hint: 'Formato m:ss.cc — ej. 1:28.40' }]}
@@ -875,13 +936,15 @@ function IntervalRecorder({ config, onSave, onCancel }) {
   const toast = useToast();
   const proto = protoById(config.protocolo);
   const meta = metricMeta('cronometro');
-  const swimmers = config.swimmerIds.map(id => st.swimmers.find(s => s.id === id)).filter(Boolean);
+  const [added, setAdded] = useState([]); // swimmers joined mid-recording
+  const swimmers = [...config.swimmerIds, ...added].map(id => st.swimmers.find(s => s.id === id)).filter(Boolean);
   const [removed, setRemoved] = useState(() => new Set());
   const activeSwimmers = swimmers.filter(s => !removed.has(s.id));
   const [active, setActive] = useState(config.swimmerIds[0]);
   const [data, setData] = useState(() => { const d = {}; config.swimmerIds.forEach(id => { d[id] = { reps: [] }; }); return d; });
   const [phase, setPhase] = useState('idle'); // idle | nado | descanso | done
   const [notas, setNotas] = useState('');
+  const [showAdd, setShowAdd] = useState(false);
   const [editingRep, setEditingRep] = useState(null); // index
   const sw = useStopwatch();
   const activeSwimmer = swimmers.find(s => s.id === active);
@@ -896,6 +959,10 @@ function IntervalRecorder({ config, onSave, onCancel }) {
   const removeSwimmer = (id) => {
     setRemoved(r => new Set([...r, id]));
     if (active === id) { const next = activeSwimmers.find(s => s.id !== id); if (next) switchTo(next.id); }
+  };
+  const addSwimmer = (id) => {
+    setAdded(a => a.includes(id) ? a : [...a, id]);
+    setData(d => d[id] ? d : { ...d, [id]: { reps: [] } });
   };
 
   // idle -> nado
@@ -974,7 +1041,12 @@ function IntervalRecorder({ config, onSave, onCancel }) {
             <RemoveSwimmerButton swimmer={s} hasData={data[s.id].reps.length > 0} onRemove={() => removeSwimmer(s.id)} />
           </div>
         ))}
+        <button className="rec-swim rec-swim-add" onClick={() => setShowAdd(true)} title="Agregar nadador rezagado">
+          <Icon name="plus" style={{ width: 15, height: 15 }} />
+          <span className="rs-name">Agregar</span>
+        </button>
       </div>
+      {showAdd && <AddSwimmerModal st={st} excludeIds={swimmers.map(s => s.id)} onAdd={addSwimmer} onClose={() => setShowAdd(false)} />}
 
       {activeSwimmers.length === 0 ? (
         <div className="card"><Empty icon="users" title="No quedan nadadores en esta sesión">Se quitaron todos los nadadores. Descarta la evaluación o vuelve atrás.</Empty></div>
@@ -1066,13 +1138,16 @@ function IntervalRecorder({ config, onSave, onCancel }) {
 function EvalDetail({ ev, onClose }) {
   const st = useStore();
   const toast = useToast();
-  const proto = protoById(ev.protocolo); const meta = metricMeta(ev.metrica);
+  const meta = metricMeta(ev.metrica);
   const [editMode, setEditMode] = useState(false);
   const [wData, setWData] = useState(ev.data);
   const [wSwimmerIds, setWSwimmerIds] = useState(ev.swimmerIds);
   const [wNotas, setWNotas] = useState(ev.notas || '');
+  const [wProtocolo, setWProtocolo] = useState(ev.protocolo);
   const [editingEntry, setEditingEntry] = useState(null); // { swimmerId, kind, index }
   const [removingSwimmer, setRemovingSwimmer] = useState(null);
+  const proto = protoById(wProtocolo);
+  const protoOptions = DB.PROTOCOLS.filter(p => !!p.compuesta === (ev.metrica === 'compuesta'));
   const swimmers = wSwimmerIds.map(id => st.swimmers.find(s => s.id === id)).filter(Boolean);
 
   const recalc = (id, patch) => setWData(d => {
@@ -1088,7 +1163,7 @@ function EvalDetail({ ev, onClose }) {
   const save = () => {
     const cleanData = {};
     wSwimmerIds.forEach(id => { if (wData[id]) cleanData[id] = wData[id]; });
-    DB.updateEvaluation(ev.id, { data: cleanData, swimmerIds: wSwimmerIds, notas: wNotas });
+    DB.updateEvaluation(ev.id, { protocolo: wProtocolo, data: cleanData, swimmerIds: wSwimmerIds, notas: wNotas });
     toast('Evaluación actualizada');
     setEditMode(false);
   };
@@ -1096,11 +1171,17 @@ function EvalDetail({ ev, onClose }) {
   return (
     <Modal title={`${meta.label} · ${proto.nombre}`} sub={`${fmtDateLong(ev.fecha)} · ${ev.tecnico}`} onClose={onClose} maxWidth={680}
       foot={editMode ? <>
-        <Button variant="ghost" onClick={() => { setWData(ev.data); setWSwimmerIds(ev.swimmerIds); setWNotas(ev.notas || ''); setEditMode(false); }}>Cancelar</Button>
+        <Button variant="ghost" onClick={() => { setWData(ev.data); setWSwimmerIds(ev.swimmerIds); setWNotas(ev.notas || ''); setWProtocolo(ev.protocolo); setEditMode(false); }}>Cancelar</Button>
         <Button icon="check" onClick={save}>Guardar cambios</Button>
       </> : null}>
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-        <span className="badge badge-navy">{proto.set}</span>
+        {editMode ? (
+          <select className="select" value={wProtocolo} onChange={e => setWProtocolo(e.target.value)} title="Corregir el protocolo de esta evaluación">
+            {protoOptions.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+          </select>
+        ) : (
+          <span className="badge badge-navy">{proto.set}</span>
+        )}
         {ev.manual && <span className="badge badge-amber">Registro manual</span>}
         <div style={{ flex: 1 }} />
         {!editMode && <Button variant="ghost" size="sm" icon="edit" onClick={() => setEditMode(true)}>Editar</Button>}

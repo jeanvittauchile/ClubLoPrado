@@ -297,6 +297,9 @@ thead .att-total-col { font-size: 11.5px; letter-spacing: .06em; text-transform:
 .rec-swim[data-on="true"] { border-color: var(--navy); background: var(--navy); }
 .rec-swim[data-on="true"] .rs-name { color: #fff; }
 .rs-name { font-weight: 700; font-size: 13.5px; color: var(--slate-700); }
+.rec-swim-add { padding: 7px 14px; border-style: dashed; color: var(--slate-500); }
+.rec-swim-add:hover { border-color: var(--cyan); color: var(--cyan-700); }
+.rec-swim-add .rs-name { color: inherit; }
 .rs-count { background: var(--cyan); color: var(--navy); font-size: 12px; font-weight: 800; padding: 1px 8px; border-radius: 99px; min-width: 20px; text-align: center; }
 .rec-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
 @media (max-width: 980px) { .rec-body { grid-template-columns: 1fr; } }
