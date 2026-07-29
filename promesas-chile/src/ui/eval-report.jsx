@@ -113,15 +113,19 @@ function EvalReport({ st, ym }) {
   const swName = (id) => { const s = ER.sw(st, id); return s ? s.nombre : '—'; };
 
   /* ---- Cronómetro series ---- */
-  const cronoSeries = evals.filter(e => e.metrica === 'cronometro' && ER.proto(e.protocolo).repeticiones > 1);
+  // EvalRecorder (protocolos de 1 sola serie) guarda tiempos en d.laps;
+  // IntervalRecorder (protocolos de repeticiones) los guarda en d.reps[].nado.
+  const splitValues = (d) => d.reps ? d.reps.map(r => r.nado).filter(v => v != null) : (d.laps || []).filter(v => v != null);
+  const cronoSeries = evals.filter(e => e.metrica === 'cronometro');
   const seriesProtos = [...new Set(cronoSeries.map(e => e.protocolo))];
 
   function rankSeries(protoId) {
     const evs = cronoSeries.filter(e => e.protocolo === protoId);
     const byS = {};
     evs.forEach(e => Object.entries(e.data).filter(([id]) => e.swimmerIds.includes(id)).forEach(([id, d]) => {
-      if (!d.laps || !d.laps.length) return;
-      (byS[id] = byS[id] || []).push(...d.laps.filter(v => v != null));
+      const vals = splitValues(d);
+      if (!vals.length) return;
+      (byS[id] = byS[id] || []).push(...vals);
     }));
     return Object.entries(byS).filter(([, laps]) => laps.length > 0).map(([id, laps]) => {
       const avg = laps.reduce((a, b) => a + b, 0) / laps.length;
@@ -141,9 +145,9 @@ function EvalReport({ st, ym }) {
     const perSwimmer = {};
     cronoSeries.filter(e => e.protocolo === progProto.p).forEach(e => {
       Object.entries(e.data).filter(([id]) => e.swimmerIds.includes(id)).forEach(([id, d]) => {
-        const laps = (d.laps || []).filter(v => v != null);
-        if (!laps.length) return;
-        const avg = laps.reduce((a, b) => a + b, 0) / laps.length;
+        const vals = splitValues(d);
+        if (!vals.length) return;
+        const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
         (perSwimmer[id] = perSwimmer[id] || {})[e.fecha] = avg;
       });
     });
