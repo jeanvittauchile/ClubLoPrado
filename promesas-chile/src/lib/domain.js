@@ -68,6 +68,12 @@ function segMeters(seg) {
   return { meters: 0, repDist: null };
 }
 
+/* Quita el contenido entre paréntesis: se usa para describir el trabajo
+   (foco técnico, detalle del ejercicio, etc.), no para sumar metros extra. */
+function stripParens(s) {
+  return String(s).replace(/\([^)]*\)/g, ' ');
+}
+
 export function parseVolume(contenido) {
   const out = { total: 0, tecnica: 0, pateo: 0, brazos: 0, velocidad: 0 };
   const lines = String(contenido || '').split(/\n/).map(l => l.trim()).filter(Boolean);
@@ -82,7 +88,7 @@ export function parseVolume(contenido) {
       });
       return;
     }
-    const { meters, repDist } = segMeters(line);
+    const { meters, repDist } = segMeters(stripParens(line));
     if (meters > 0) { out.total += meters; const c = classifySeg(line, repDist); if (c) out[c] += meters; }
   });
   return out;
