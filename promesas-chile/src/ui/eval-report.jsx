@@ -91,7 +91,8 @@ function EvalReport({ st, ym }) {
     return Object.entries(byS).filter(([, laps]) => laps.length > 0).map(([id, laps]) => {
       const avg = laps.reduce((a, b) => a + b, 0) / laps.length;
       const best = Math.min(...laps);
-      return { id, label: swName(id), value: avg, best, count: laps.length };
+      const worst = Math.max(...laps);
+      return { id, label: swName(id), value: avg, best, worst, count: laps.length };
     }).sort((a, b) => a.value - b.value);
   }
 
@@ -116,7 +117,7 @@ function EvalReport({ st, ym }) {
         const arr = s.metrics[m];
         metrics[m] = arr && arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
       });
-      return { id, label: swName(id), value: Math.min(...s.times), avg: s.times.reduce((a, b) => a + b, 0) / s.times.length, count: s.times.length, metrics };
+      return { id, label: swName(id), value: Math.min(...s.times), worst: Math.max(...s.times), avg: s.times.reduce((a, b) => a + b, 0) / s.times.length, total: s.times.reduce((a, b) => a + b, 0), count: s.times.length, metrics };
     }).sort((a, b) => a.value - b.value);
   }
 
@@ -216,7 +217,7 @@ function EvalReport({ st, ym }) {
               const rankRows = rank.map(r => {
                 const lvl = proto.niveles ? DB.levelFor(proto, r.value) : null;
                 const lvlTxt = proto.niveles ? ` · ${lvl ? `Nivel ${lvl}` : 'Sin nivel'}` : '';
-                return { id: r.id, label: r.label, display: fmtTime(r.value), subtext: `Mejor ${proto.distancia}m: ${fmtTime(r.best)} · ${r.count} reps${lvlTxt}` };
+                return { id: r.id, label: r.label, display: fmtTime(r.value), subtext: `Mejor ${proto.distancia}m: ${fmtTime(r.best)} · Peor: ${fmtTime(r.worst)} · ${r.count} reps${lvlTxt}` };
               });
               const barRows = rank.map(r => ({ label: r.label.split(' ').slice(0, 2).join(' '), value: r.value, display: fmtTime(r.value) }));
               return (
@@ -254,7 +255,7 @@ function EvalReport({ st, ym }) {
             const rank = rankComp(pid);
             const rankRows = rank.map(r => {
               const metricParts = (proto.metricas || []).map(m => `${ER.metric(m).label}: ${r.metrics[m] != null ? r.metrics[m].toFixed(1) : '—'}`);
-              return { id: r.id, label: r.label, display: fmtTime(r.value), subtext: `Promedio: ${fmtTime(r.avg)} · ${r.count} intentos${metricParts.length ? ' · ' + metricParts.join(' · ') : ''}` };
+              return { id: r.id, label: r.label, display: fmtTime(r.value), subtext: `Promedio: ${fmtTime(r.avg)} · Peor: ${fmtTime(r.worst)} · Total: ${fmtTime(r.total)} · ${r.count} intentos${metricParts.length ? ' · ' + metricParts.join(' · ') : ''}` };
             });
             const barRows = rank.map(r => ({ label: r.label.split(' ').slice(0, 2).join(' '), value: r.value, display: fmtTime(r.value) }));
             return (

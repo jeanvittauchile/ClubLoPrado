@@ -76,6 +76,43 @@ function SeriesSummary({ reps, compact, proto }) {
   );
 }
 
+/* ---------- Compound summary (total, avg, best/worst attempt) ---------- */
+function compSummary(intentos) {
+  const done = (intentos || []).filter(it => it.tiempo != null);
+  if (done.length === 0) return null;
+  const times = done.map(it => it.tiempo);
+  let bestI = 0, worstI = 0;
+  times.forEach((t, i) => { if (t < times[bestI]) bestI = i; if (t > times[worstI]) worstI = i; });
+  return {
+    count: done.length,
+    total: times.reduce((a, b) => a + b, 0),
+    avg: times.reduce((a, b) => a + b, 0) / times.length,
+    best: times[bestI], bestIdx: bestI + 1,
+    worst: times[worstI], worstIdx: worstI + 1,
+  };
+}
+
+function CompSummary({ intentos, compact }) {
+  const s = compSummary(intentos);
+  if (!s) return null;
+  const items = [
+    { l: 'Total', v: fmtTime(s.total), c: 'var(--slate-700)' },
+    { l: 'Promedio', v: fmtTime(s.avg), c: 'var(--cyan-700)' },
+    { l: `Mejor · #${s.bestIdx}`, v: fmtTime(s.best), c: 'var(--green)' },
+    { l: `Peor · #${s.worstIdx}`, v: fmtTime(s.worst), c: 'var(--red)' },
+  ];
+  return (
+    <div className={`series-sum ${compact ? 'compact' : ''}`}>
+      {items.map((it, i) => (
+        <div className="series-sum-item" key={i}>
+          <div className="ss-label">{it.l}</div>
+          <div className="ss-val" style={{ color: it.c }}>{it.v}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* ---------- DNF ("no completó") mark ---------- */
 function DnfChip({ small }) {
   return <span className="badge badge-red" style={{ fontWeight: 800, fontSize: small ? 11 : undefined }}>✕ No completó</span>;
@@ -684,6 +721,12 @@ function CompoundRecorder({ config, onSave, onCancel }) {
               </tbody>
             </table>
           )}
+          {activeData.intentos.length > 0 && (
+            <div className="card-pad" style={{ borderTop: '1px solid var(--line-soft)' }}>
+              <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--slate-400)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 12 }}>Resumen de intentos</div>
+              <CompSummary intentos={activeData.intentos} />
+            </div>
+          )}
         </div>
         {editingIntento != null && (
           <EditEntryModal title={`Intento ${editingIntento + 1} · ${activeSwimmer?.nombre?.split(' ')[0]}`}
@@ -1233,6 +1276,7 @@ function EvalDetail({ ev, onClose }) {
               )
             ) : ev.metrica === 'compuesta' ? (
               (d.intentos || []).length === 0 ? <span className="rp-empty" style={{ fontSize: 12.5 }}>Sin intentos</span> : (
+                <React.Fragment>
                 <table className="tbl" style={{ border: '1px solid var(--line-soft)', borderRadius: 'var(--r-md)' }}>
                   <thead><tr><th>#</th><th>Tiempo</th>{proto.metricas.map(m => <th key={m}>{DB.METRIC_TYPES[m].label}</th>)}{editMode && <th></th>}</tr></thead>
                   <tbody>
@@ -1246,6 +1290,8 @@ function EvalDetail({ ev, onClose }) {
                     ))}
                   </tbody>
                 </table>
+                <div style={{ marginTop: 12 }}><CompSummary intentos={d.intentos} compact /></div>
+                </React.Fragment>
               )
             ) : (
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
