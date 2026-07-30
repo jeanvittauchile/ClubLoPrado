@@ -213,7 +213,11 @@ function EvalReport({ st, ym }) {
             {seriesProtos.map(pid => {
               const proto = ER.proto(pid);
               const rank = rankSeries(pid);
-              const rankRows = rank.map(r => ({ id: r.id, label: r.label, display: fmtTime(r.value), subtext: `Mejor ${proto.distancia}m: ${fmtTime(r.best)} · ${r.count} reps` }));
+              const rankRows = rank.map(r => {
+                const lvl = proto.niveles ? DB.levelFor(proto, r.value) : null;
+                const lvlTxt = proto.niveles ? ` · ${lvl ? `Nivel ${lvl}` : 'Sin nivel'}` : '';
+                return { id: r.id, label: r.label, display: fmtTime(r.value), subtext: `Mejor ${proto.distancia}m: ${fmtTime(r.best)} · ${r.count} reps${lvlTxt}` };
+              });
               const barRows = rank.map(r => ({ label: r.label.split(' ').slice(0, 2).join(' '), value: r.value, display: fmtTime(r.value) }));
               return (
                 <div className="rp-section rp-twocol" key={pid}>
