@@ -64,45 +64,6 @@ function RankList({ rows }) {
   );
 }
 
-/* ---------- SVG multi-line progression chart ---------- */
-function LineChart({ series, xLabels, unit }) {
-  const W = 560, H = 230, padL = 52, padR = 16, padT = 16, padB = 34;
-  const allY = series.flatMap(s => s.points.map(p => p.y));
-  if (allY.length === 0) return <p className="rp-empty">Sin datos suficientes.</p>;
-  let minY = Math.min(...allY), maxY = Math.max(...allY);
-  const pad = (maxY - minY) * 0.15 || 1; minY -= pad; maxY += pad;
-  if (unit === 'time') minY = Math.max(0, minY);
-  const n = xLabels.length;
-  const x = (i) => padL + (n <= 1 ? (W - padL - padR) / 2 : (i / (n - 1)) * (W - padL - padR));
-  const y = (v) => padT + (1 - (v - minY) / (maxY - minY || 1)) * (H - padT - padB);
-  const yticks = 4;
-  return (
-    <svg className="linechart" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet">
-      {Array.from({ length: yticks + 1 }).map((_, i) => {
-        const v = minY + (i / yticks) * (maxY - minY);
-        const yy = y(v);
-        return (
-          <g key={i}>
-            <line x1={padL} y1={yy} x2={W - padR} y2={yy} stroke="#EEF2F5" strokeWidth="1" />
-            <text x={padL - 8} y={yy + 4} textAnchor="end" fontSize="10" fill="#8A99A6">{unit === 'time' ? fmtTime(v) : v.toFixed(1)}</text>
-          </g>
-        );
-      })}
-      {xLabels.map((lb, i) => <text key={i} x={x(i)} y={H - 12} textAnchor="middle" fontSize="10" fill="#8A99A6">{lb}</text>)}
-      {series.map((s, si) => {
-        const pts = s.points.filter(p => p.y != null);
-        const d = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(p.x)},${y(p.y)}`).join(' ');
-        return (
-          <g key={si}>
-            {pts.length > 1 && <path d={d} fill="none" stroke={s.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />}
-            {pts.map((p, i) => <circle key={i} cx={x(p.x)} cy={y(p.y)} r="3.5" fill="#fff" stroke={s.color} strokeWidth="2.5" />)}
-          </g>
-        );
-      })}
-    </svg>
-  );
-}
-
 /* ---------- Main evaluation report — A4 multi-page ---------- */
 function EvalReport({ st, ym }) {
   const [yy, mm] = ym.split('-').map(Number);
@@ -134,41 +95,29 @@ function EvalReport({ st, ym }) {
     }).sort((a, b) => a.value - b.value);
   }
 
-  /* ---- Progresión ---- */
-  const progProto = seriesProtos.map(p => ({ p, dates: [...new Set(cronoSeries.filter(e => e.protocolo === p).map(e => e.fecha))] }))
-    .sort((a, b) => b.dates.length - a.dates.length)[0];
-
-  let progSeries = [], progXLabels = [];
-  if (progProto && progProto.dates.length >= 2) {
-    const dates = progProto.dates.sort();
-    progXLabels = dates.map(d => fmtDate(d).replace(/ \d{4}$/, ''));
-    const perSwimmer = {};
-    cronoSeries.filter(e => e.protocolo === progProto.p).forEach(e => {
-      Object.entries(e.data).filter(([id]) => e.swimmerIds.includes(id)).forEach(([id, d]) => {
-        const vals = splitValues(d);
-        if (!vals.length) return;
-        const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
-        (perSwimmer[id] = perSwimmer[id] || {})[e.fecha] = avg;
-      });
-    });
-    const ranked = rankSeries(progProto.p);
-    progSeries = ranked.filter(r => Object.keys(perSwimmer[r.id] || {}).length >= 1).slice(0, 4).map((r, i) => ({
-      name: r.label, color: ['#00A6C6', '#1FA971', '#7B5BD6', '#E0793B'][i],
-      points: dates.map((d, xi) => ({ x: xi, y: perSwimmer[r.id] && perSwimmer[r.id][d] != null ? perSwimmer[r.id][d] : null })),
-    }));
-  }
-
   /* ---- Compuesta ---- */
   const compEvals = evals.filter(e => e.metrica === 'compuesta');
   const compProtos = [...new Set(compEvals.map(e => e.protocolo))];
   function rankComp(protoId) {
+    const proto = ER.proto(protoId);
     const evs = compEvals.filter(e => e.protocolo === protoId);
     const byS = {};
     evs.forEach(e => Object.entries(e.data).filter(([id]) => e.swimmerIds.includes(id)).forEach(([id, d]) => {
-      (d.intentos || []).forEach(it => { if (it.tiempo != null) (byS[id] = byS[id] || []).push(it.tiempo); });
+      (d.intentos || []).forEach(it => {
+        if (it.tiempo == null) return;
+        const s = (byS[id] = byS[id] || { times: [], metrics: {} });
+        s.times.push(it.tiempo);
+        (proto.metricas || []).forEach(m => { if (it[m] != null) (s.metrics[m] = s.metrics[m] || []).push(it[m]); });
+      });
     }));
-    return Object.entries(byS).map(([id, ts]) => ({ id, label: swName(id), value: Math.min(...ts), avg: ts.reduce((a, b) => a + b, 0) / ts.length, count: ts.length }))
-      .sort((a, b) => a.value - b.value);
+    return Object.entries(byS).map(([id, s]) => {
+      const metrics = {};
+      (proto.metricas || []).forEach(m => {
+        const arr = s.metrics[m];
+        metrics[m] = arr && arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
+      });
+      return { id, label: swName(id), value: Math.min(...s.times), avg: s.times.reduce((a, b) => a + b, 0) / s.times.length, count: s.times.length, metrics };
+    }).sort((a, b) => a.value - b.value);
   }
 
   /* ---- Counts ---- */
@@ -192,7 +141,7 @@ function EvalReport({ st, ym }) {
   evals.forEach(e => { byMetric[e.metrica] = (byMetric[e.metrica] || 0) + 1; });
 
   const empty = evals.length === 0;
-  const hasPage2Content = !empty && (progSeries.length > 0 || compProtos.length > 0 || brazadasRank.length > 0 || subRank.length > 0 || evals.length > 0);
+  const hasPage2Content = !empty && (compProtos.length > 0 || brazadasRank.length > 0 || subRank.length > 0 || evals.length > 0);
 
   return (
     <div className="report-viewer">
@@ -264,7 +213,7 @@ function EvalReport({ st, ym }) {
             {seriesProtos.map(pid => {
               const proto = ER.proto(pid);
               const rank = rankSeries(pid);
-              const rankRows = rank.map(r => ({ id: r.id, label: r.label, display: fmtTime(r.value), subtext: `Mejor 100: ${fmtTime(r.best)} · ${r.count} reps` }));
+              const rankRows = rank.map(r => ({ id: r.id, label: r.label, display: fmtTime(r.value), subtext: `Mejor ${proto.distancia}m: ${fmtTime(r.best)} · ${r.count} reps` }));
               const barRows = rank.map(r => ({ label: r.label.split(' ').slice(0, 2).join(' '), value: r.value, display: fmtTime(r.value) }));
               return (
                 <div className="rp-section rp-twocol" key={pid}>
@@ -273,8 +222,8 @@ function EvalReport({ st, ym }) {
                     <RankList rows={rankRows} />
                   </div>
                   <div>
-                    <h2 className="rp-h">Comparativa promedio 100m</h2>
-                    <CompareBars rows={barRows} lowerBetter unit="time" note="Barra más larga = más rápido (mejor promedio por 100m)." />
+                    <h2 className="rp-h">Comparativa promedio {proto.distancia}m</h2>
+                    <CompareBars rows={barRows} lowerBetter unit="time" note={`Barra más larga = más rápido (mejor promedio por ${proto.distancia}m).`} />
                   </div>
                 </div>
               );
@@ -286,7 +235,7 @@ function EvalReport({ st, ym }) {
         )}
       </div>
 
-      {/* ══════════════ PÁGINA 2: Progresión + Compuesta + Counts + Detalle ══════════════ */}
+      {/* ══════════════ PÁGINA 2: Compuesta + Counts + Detalle ══════════════ */}
       {hasPage2Content && (
         <div className="report-page">
           {/* Cabecera de continuación */}
@@ -295,30 +244,14 @@ function EvalReport({ st, ym }) {
             <span className="rp-cont-meta">{MONTHS[mm - 1]} {yy}</span>
           </div>
 
-          {/* Progresión temporal */}
-          {progSeries.length > 0 && (
-            <div className="rp-section">
-              <h2 className="rp-h">Progresión de tiempos · {ER.proto(progProto.p).nombre}</h2>
-              <div className="linechart-wrap">
-                <LineChart series={progSeries} xLabels={progXLabels} unit="time" />
-                <div className="chart-legend">
-                  {progSeries.map((s, i) => (
-                    <span key={i} className="cl-item">
-                      <span className="cl-dot" style={{ background: s.color }} />
-                      {s.name.split(' ').slice(0, 2).join(' ')}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <p className="chart-note">Promedio por 100m en cada fecha de control. Tendencia descendente = mejora.</p>
-            </div>
-          )}
-
           {/* Ranking compuesta */}
           {compProtos.map(pid => {
             const proto = ER.proto(pid);
             const rank = rankComp(pid);
-            const rankRows = rank.map(r => ({ id: r.id, label: r.label, display: fmtTime(r.value), subtext: `Promedio: ${fmtTime(r.avg)} · ${r.count} intentos` }));
+            const rankRows = rank.map(r => {
+              const metricParts = (proto.metricas || []).map(m => `${ER.metric(m).label}: ${r.metrics[m] != null ? r.metrics[m].toFixed(1) : '—'}`);
+              return { id: r.id, label: r.label, display: fmtTime(r.value), subtext: `Promedio: ${fmtTime(r.avg)} · ${r.count} intentos${metricParts.length ? ' · ' + metricParts.join(' · ') : ''}` };
+            });
             const barRows = rank.map(r => ({ label: r.label.split(' ').slice(0, 2).join(' '), value: r.value, display: fmtTime(r.value) }));
             return (
               <div className="rp-section rp-twocol" key={pid}>
