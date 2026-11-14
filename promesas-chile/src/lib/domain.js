@@ -353,10 +353,10 @@ export function seed() {
   const iso = (d) => d.toISOString().slice(0, 10);
   const dOff = (n) => { const x = new Date(today); x.setDate(x.getDate() + n); return x; };
   const trainings = [
-    { id: uid(), fecha: iso(today), titulo: 'Técnica de viraje y streamline', grupo: 'G1', tipo: 'Técnica', duracion: 90, ubicacion: 'Piscina Olímpica Valdivia', contenido: '400 nado suave + movilidad\n8×50 viraje con 5 ondas subacuático\n10×100 libre @2:20 control de brazadas\n200 vuelta a la calma' },
-    { id: uid(), fecha: iso(dOff(-1)), titulo: 'Resistencia aeróbica', grupo: 'G1', tipo: 'Aeróbico', duracion: 100, ubicacion: 'Piscina Olímpica Valdivia', contenido: '600 calentamiento mixto\n3×(400 libre + 100 patada)\n300 combinado suave' },
-    { id: uid(), fecha: iso(dOff(2)), titulo: 'Velocidad y salidas', grupo: 'G1', tipo: 'Velocidad', duracion: 80, ubicacion: 'Piscina Olímpica Valdivia', contenido: '500 progresivo\n12×25 sprint con salida\n6×50 mariposa control brazadas\n200 suave' },
-    { id: uid(), fecha: iso(dOff(4)), titulo: 'Preparación de prueba 200 combinado', grupo: 'G1', tipo: 'Específico', duracion: 90, ubicacion: 'Piscina Olímpica Valdivia', contenido: 'Calentamiento competición\n1×200 combinado situación de competencia\nAnálisis de estrategia por tramo' },
+    { id: uid(), fecha: iso(today), titulo: 'Técnica de viraje y streamline', grupo: 'G1', tipo: 'Técnica', duracion: 90, ubicacion: 'Piscina Municipal de Lo Prado', contenido: '400 nado suave + movilidad\n8×50 viraje con 5 ondas subacuático\n10×100 libre @2:20 control de brazadas\n200 vuelta a la calma' },
+    { id: uid(), fecha: iso(dOff(-1)), titulo: 'Resistencia aeróbica', grupo: 'G1', tipo: 'Aeróbico', duracion: 100, ubicacion: 'Piscina Municipal de Lo Prado', contenido: '600 calentamiento mixto\n3×(400 libre + 100 patada)\n300 combinado suave' },
+    { id: uid(), fecha: iso(dOff(2)), titulo: 'Velocidad y salidas', grupo: 'G1', tipo: 'Velocidad', duracion: 80, ubicacion: 'Piscina Municipal de Lo Prado', contenido: '500 progresivo\n12×25 sprint con salida\n6×50 mariposa control brazadas\n200 suave' },
+    { id: uid(), fecha: iso(dOff(4)), titulo: 'Preparación de prueba 200 combinado', grupo: 'G1', tipo: 'Específico', duracion: 90, ubicacion: 'Piscina Municipal de Lo Prado', contenido: 'Calentamiento competición\n1×200 combinado situación de competencia\nAnálisis de estrategia por tramo' },
   ];
 
   const attendance = {};

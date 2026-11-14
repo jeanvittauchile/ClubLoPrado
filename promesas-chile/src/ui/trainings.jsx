@@ -13,7 +13,7 @@ import {
    ============================================================ */
 const TR_TYPES = ['Técnica', 'Aeróbico', 'Velocidad', 'Específico', 'Resistencia', 'Recuperación'];
 const TR_TYPE_COLOR = { 'Técnica': 'cyan', 'Aeróbico': 'navy', 'Velocidad': 'red', 'Específico': 'amber', 'Resistencia': 'green', 'Recuperación': 'slate' };
-const TR_EMPTY = { fecha: '', titulo: '', grupo: 'G1', tipo: 'Técnica', duracion: 90, ubicacion: 'Piscina Olímpica Valdivia', contenido: '' };
+const TR_EMPTY = { fecha: '', titulo: '', grupo: 'G1', tipo: 'Técnica', duracion: 90, ubicacion: 'Piscina Municipal de Lo Prado', contenido: '' };
 
 const VOL_META = [
   { k: 'total', label: 'Total', color: 'var(--navy)' },
@@ -167,8 +167,8 @@ function TrainingImport({ onClose }) {
 
   function downloadTemplate() {
     const headers = ['fecha*', 'titulo*', 'grupo', 'tipo', 'duracion', 'ubicacion', 'contenido'];
-    const example = ['2024-03-15', 'Técnica de viraje y streamline', 'G1', 'Técnica', 90, 'Piscina Olímpica Valdivia', '400 nado suave + movilidad\n8×50 viraje con 5 ondas\n10×100 libre @2:20'];
-    const example2 = ['2024-03-17', 'Trabajo aeróbico base', 'G1', 'Aeróbico', 120, 'Piscina Olímpica Valdivia', '600 suave\n10×200 libre @3:30\n400 vuelta'];
+    const example = ['2024-03-15', 'Técnica de viraje y streamline', 'G1', 'Técnica', 90, 'Piscina Municipal de Lo Prado', '400 nado suave + movilidad\n8×50 viraje con 5 ondas\n10×100 libre @2:20'];
+    const example2 = ['2024-03-17', 'Trabajo aeróbico base', 'G1', 'Aeróbico', 120, 'Piscina Municipal de Lo Prado', '600 suave\n10×200 libre @3:30\n400 vuelta'];
     const ws = XLSX.utils.aoa_to_sheet([headers, example, example2]);
     ws['!cols'] = [14, 32, 8, 14, 10, 26, 40].map(wch => ({ wch }));
     const wb = XLSX.utils.book_new();
@@ -194,7 +194,7 @@ function TrainingImport({ onClose }) {
             grupo: ['G1', 'G2', 'TODOS'].includes(grupo) ? grupo : 'G1',
             tipo: VALID_TYPES.has(tipo) ? tipo : 'Técnica',
             duracion: Math.max(1, parseInt(r['duracion'], 10) || 90),
-            ubicacion: String(r['ubicacion'] || 'Piscina Olímpica Valdivia').trim(),
+            ubicacion: String(r['ubicacion'] || 'Piscina Municipal de Lo Prado').trim(),
             contenido: String(r['contenido'] || '').replace(/\\n/g, '\n').trim(),
           };
         }).filter(r => r.fecha || r.titulo);
