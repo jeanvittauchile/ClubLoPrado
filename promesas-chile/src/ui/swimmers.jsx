@@ -10,7 +10,7 @@ import { SwimmerGroupReport } from './benef-report.jsx';
 
 
 /* ============================================================
-   swimmers.jsx — Nadadores (DAR / Beneficiarios) CRUD
+   swimmers.jsx — Nadadores (Grupo 1 / Grupo 2) CRUD
    ============================================================ */
 const SW_EMPTY = {
   nombre: '', rut: '', fechaNacimiento: '', genero: 'M', correo: '',
@@ -27,7 +27,7 @@ function SwimmerForm({ initial, group, onSave, onClose }) {
   return (
     <Modal
       title={initial ? 'Editar nadador' : 'Nuevo nadador'}
-      sub={group === 'DAR' ? 'Grupo DAR — Deportista de Alto Rendimiento' : 'Grupo Beneficiarios'}
+      sub={DB.groupLabel(group)}
       onClose={onClose}
       foot={<>
         <Button variant="ghost" onClick={onClose}>Cancelar</Button>
@@ -48,20 +48,16 @@ function SwimmerForm({ initial, group, onSave, onClose }) {
             </div>
           </Field>
         </div>
-        {group === 'BEN' && (
-          <>
-            <div className="divider" />
-            <div className="field-grid">
-              <Field label="Prueba">
-                <select className="select" value={f.prueba} onChange={set('prueba')}>
-                  <option value="">— seleccionar —</option>
-                  {DB.PRUEBAS.map(p => <option key={p} value={p}>{p}</option>)}
-                </select>
-              </Field>
-              <Field label="Tiempo de clasificación"><input className="input" value={f.tiempo} onChange={set('tiempo')} placeholder="ej: 1:05.43" /></Field>
-            </div>
-          </>
-        )}
+        <div className="divider" />
+        <div className="field-grid">
+          <Field label="Prueba">
+            <select className="select" value={f.prueba} onChange={set('prueba')}>
+              <option value="">— seleccionar —</option>
+              {DB.PRUEBAS.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+          </Field>
+          <Field label="Tiempo de clasificación"><input className="input" value={f.tiempo} onChange={set('tiempo')} placeholder="ej: 1:05.43" /></Field>
+        </div>
         <div className="divider" />
         <div className="field-grid">
           <Field label="Correo personal"><input className="input" value={f.correo} onChange={set('correo')} placeholder="nadador@mail.com" /></Field>
@@ -90,11 +86,11 @@ function SwimmerDetail({ swimmer, onClose, onEdit }) {
   const att = st.attendance[swimmer.id] || {};
   const present = Object.keys(att).filter(d => d.startsWith(ym) && att[d]).length;
   const evals = st.evaluations.filter(e => e.swimmerIds.includes(swimmer.id));
-  const goldTime = swimmer.group === 'BEN' ? DB.goldTimeFor(swimmer.prueba, swimmer.genero, swimmer.fechaNacimiento) : null;
+  const goldTime = DB.goldTimeFor(swimmer.prueba, swimmer.genero, swimmer.fechaNacimiento);
   const pct = goldTime ? DB.proximityPct(swimmer.tiempo, goldTime) : null;
   const pctColor = pct == null ? null : pct >= 95 ? '#0f766e' : pct >= 85 ? '#0369a1' : pct >= 70 ? '#b45309' : '#6b7280';
   const rows = [
-    ...(swimmer.group === 'BEN' && (swimmer.prueba || swimmer.tiempo) ? [
+    ...((swimmer.prueba || swimmer.tiempo) ? [
       ['award', 'Prueba', swimmer.prueba || '—'],
       ['clock', 'Tiempo de clasificación', swimmer.tiempo
         ? `${swimmer.tiempo}${pct != null ? ` · ${pct}% del oro (${goldTime})` : ''}`
@@ -111,7 +107,7 @@ function SwimmerDetail({ swimmer, onClose, onEdit }) {
     ['pin', 'Dirección', swimmer.direccion || '—'],
   ];
   return (
-    <Modal title={swimmer.nombre} sub={`${cat} · ${swimmer.group === 'DAR' ? 'Grupo DAR' : 'Beneficiario'}`} onClose={onClose} maxWidth={640}
+    <Modal title={swimmer.nombre} sub={`${cat} · ${DB.groupLabel(swimmer.group)}`} onClose={onClose} maxWidth={640}
       foot={<>
         <Button variant="ghost" onClick={onClose}>Cerrar</Button>
         <Button icon="edit" onClick={() => { onClose(); onEdit(); }}>Editar datos</Button>
@@ -121,7 +117,7 @@ function SwimmerDetail({ swimmer, onClose, onEdit }) {
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <span className="badge badge-cyan">{cat}</span>
           <span className="badge badge-slate">{swimmer.genero === 'F' ? 'Femenino' : 'Masculino'}</span>
-          {swimmer.group === 'DAR' && <span className="badge badge-green">{present} asistencias este mes</span>}
+          {<span className="badge badge-green">{present} asistencias este mes</span>}
           {evals.length > 0 && <span className="badge badge-navy">{evals.length} evaluaciones</span>}
           {pct != null && <span className="badge" style={{ background: pctColor + '1a', color: pctColor, border: `1px solid ${pctColor}40` }}>{pct}% del oro sudamericano</span>}
         </div>
@@ -160,17 +156,10 @@ function SwimmerImport({ group, onClose }) {
   const [rows, setRows] = useState(null);
 
   function downloadTemplate() {
-    const headers = group === 'BEN'
-      ? ['nombre*', 'rut', 'fechaNacimiento', 'genero', 'prueba', 'tiempo', 'correo', 'tutor', 'correoTutor', 'telefono', 'club', 'colegio', 'direccion']
-      : ['nombre*', 'rut', 'fechaNacimiento', 'genero', 'correo', 'tutor', 'correoTutor', 'telefono', 'club', 'colegio', 'direccion'];
-    const example = group === 'BEN'
-      ? ['Ana Pérez González', '12.345.678-9', '2010-03-15', 'F', '100m Mariposa', '1:05.43', 'ana@mail.com', 'María González', 'maria@mail.com', '+56 9 1234 5678', 'Club Natación Valdivia', 'Liceo San Carlos', 'Av. Principal 123, Valdivia']
-      : ['Juan Pérez González', '12.345.678-9', '2010-03-15', 'M', 'juan@mail.com', 'María González', 'maria@mail.com', '+56 9 1234 5678', 'Club Natación Valdivia', 'Liceo San Carlos', 'Av. Principal 123, Valdivia'];
+    const headers = ['nombre*', 'rut', 'fechaNacimiento', 'genero', 'prueba', 'tiempo', 'correo', 'tutor', 'correoTutor', 'telefono', 'club', 'colegio', 'direccion'];
+    const example = ['Ana Pérez González', '12.345.678-9', '2010-03-15', 'F', '100m Mariposa', '1:05.43', 'ana@mail.com', 'María González', 'maria@mail.com', '+56 9 1234 5678', 'Club Natación Lo Prado', 'Liceo San Carlos', 'Av. Principal 123, Lo Prado'];
     const ws = XLSX.utils.aoa_to_sheet([headers, example]);
-    ws['!cols'] = (group === 'BEN'
-      ? [26, 18, 18, 8, 20, 14, 26, 26, 26, 18, 22, 24, 32]
-      : [26, 18, 18, 8, 26, 26, 26, 18, 22, 24, 32]
-    ).map(wch => ({ wch }));
+    ws['!cols'] = [26, 18, 18, 8, 20, 14, 26, 26, 26, 18, 22, 24, 32].map(wch => ({ wch }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Nadadores');
     XLSX.writeFile(wb, 'plantilla_nadadores.xlsx');
@@ -219,7 +208,7 @@ function SwimmerImport({ group, onClose }) {
 
   return (
     <Modal title="Importar nadadores desde Excel"
-      sub={group === 'DAR' ? 'Grupo DAR — Deportista de Alto Rendimiento' : 'Grupo Beneficiarios'}
+      sub={DB.groupLabel(group)}
       onClose={onClose} maxWidth={700}
       foot={<>
         <Button variant="ghost" onClick={onClose}>Cancelar</Button>
@@ -297,7 +286,7 @@ function SwimmerImport({ group, onClose }) {
 function SwimmersView() {
   const st = useStore();
   const toast = useToast();
-  const [group, setGroup] = useState('DAR');
+  const [group, setGroup] = useState('G1');
   const [q, setQ] = useState('');
   const [editing, setEditing] = useState(null);   // swimmer or 'new'
   const [detail, setDetail] = useState(null);
@@ -313,8 +302,8 @@ function SwimmersView() {
   }, [st.swimmers, group, q]);
 
   const counts = useMemo(() => ({
-    DAR: st.swimmers.filter(s => s.group === 'DAR').length,
-    BEN: st.swimmers.filter(s => s.group === 'BEN').length,
+    G1: st.swimmers.filter(s => s.group === 'G1').length,
+    G2: st.swimmers.filter(s => s.group === 'G2').length,
   }), [st.swimmers]);
 
   const save = (data) => {
@@ -343,8 +332,8 @@ function SwimmersView() {
     <div>
       <div className="toolbar">
         <div className="tabs">
-          <button className={`tab ${group === 'DAR' ? 'active' : ''}`} onClick={() => setGroup('DAR')}>DAR · {counts.DAR}</button>
-          <button className={`tab ${group === 'BEN' ? 'active' : ''}`} onClick={() => setGroup('BEN')}>Beneficiarios · {counts.BEN}</button>
+          <button className={`tab ${group === 'G1' ? 'active' : ''}`} onClick={() => setGroup('G1')}>Grupo 1 · {counts.G1}</button>
+          <button className={`tab ${group === 'G2' ? 'active' : ''}`} onClick={() => setGroup('G2')}>Grupo 2 · {counts.G2}</button>
         </div>
         <div className="search">
           <Icon name="search" />
@@ -356,15 +345,6 @@ function SwimmersView() {
         <Button icon="plus" onClick={() => setEditing('new')}>Nuevo nadador</Button>
       </div>
 
-      {group === 'BEN' && (
-        <div className="card card-pad" style={{ display: 'flex', gap: 13, alignItems: 'flex-start', marginBottom: 18, background: 'var(--cyan-050)', borderColor: 'var(--cyan-100)' }}>
-          <Icon name="alert" style={{ width: 20, height: 20, stroke: 'var(--cyan-700)', flex: '0 0 20px', marginTop: 2 }} />
-          <div style={{ fontSize: 13.5, color: 'var(--cyan-700)', lineHeight: 1.5 }}>
-            <strong>Beneficiarios</strong> — son 12 deportistas (6 hombres, 6 mujeres) de los que se mantiene únicamente la ficha de datos. No necesariamente entrenan en el programa. Toda baja requiere justificación y queda registrada.
-          </div>
-        </div>
-      )}
-
       <div className="card">
         {list.length === 0 ? (
           <Empty icon="users" title="Sin nadadores" action={<Button icon="plus" onClick={() => setEditing('new')}>Agregar el primero</Button>}>
@@ -375,7 +355,7 @@ function SwimmersView() {
             <thead>
               <tr>
                 <th>Nadador</th><th>Categoría</th><th>RUT</th><th>Club</th>
-                {group === 'BEN' ? <><th>Prueba</th><th>Tiempo</th></> : <th>Tutor</th>}
+                <th>Prueba</th><th>Tiempo</th><th>Tutor</th>
                 <th style={{ textAlign: 'right' }}>Acciones</th>
               </tr>
             </thead>
@@ -394,21 +374,18 @@ function SwimmersView() {
                   <td><span className="badge badge-cyan">{DB.categoryFor(s.fechaNacimiento)}</span></td>
                   <td style={{ fontVariantNumeric: 'tabular-nums' }}>{s.rut}</td>
                   <td>{s.club || '—'}</td>
-                  {group === 'BEN' ? (
-                    <>
-                      <td>{s.prueba || '—'}</td>
-                      <td>
-                        {s.tiempo || '—'}
-                        {(() => {
-                          const gt = DB.goldTimeFor(s.prueba, s.genero, s.fechaNacimiento);
-                          const p = gt ? DB.proximityPct(s.tiempo, gt) : null;
-                          if (p == null) return null;
-                          const c = p >= 95 ? '#0f766e' : p >= 85 ? '#0369a1' : p >= 70 ? '#b45309' : '#6b7280';
-                          return <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700, color: c }}>({p}%)</span>;
-                        })()}
-                      </td>
-                    </>
-                  ) : <td>{s.tutor || '—'}</td>}
+                  <td>{s.prueba || '—'}</td>
+                  <td>
+                    {s.tiempo || '—'}
+                    {(() => {
+                      const gt = DB.goldTimeFor(s.prueba, s.genero, s.fechaNacimiento);
+                      const p = gt ? DB.proximityPct(s.tiempo, gt) : null;
+                      if (p == null) return null;
+                      const c = p >= 95 ? '#0f766e' : p >= 85 ? '#0369a1' : p >= 70 ? '#b45309' : '#6b7280';
+                      return <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700, color: c }}>({p}%)</span>;
+                    })()}
+                  </td>
+                  <td>{s.tutor || '—'}</td>
                   <td onClick={e => e.stopPropagation()}>
                     <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
                       <button className="btn-icon" title="Editar" onClick={() => setEditing(s)}><Icon name="edit" /></button>
@@ -432,7 +409,7 @@ function SwimmersView() {
                 {st.bajas.slice().reverse().map(b => (
                   <tr key={b.id}>
                     <td style={{ fontWeight: 700, color: 'var(--ink)' }}>{b.nombre}</td>
-                    <td><span className="badge badge-slate">{b.group === 'DAR' ? 'DAR' : 'Beneficiario'}</span></td>
+                    <td><span className="badge badge-slate">{DB.groupLabel(b.group)}</span></td>
                     <td>{fmtDate(b.fecha)}</td>
                     <td style={{ maxWidth: 360 }}>{b.justificacion || '—'}</td>
                   </tr>

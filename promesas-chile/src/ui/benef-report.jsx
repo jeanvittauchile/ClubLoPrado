@@ -4,14 +4,13 @@ import { fmtDate, fmtDateLong, todayISO } from './components.jsx';
 
 
 /* ============================================================
-   benef-report.jsx — Ficha de nadadores (DAR / Beneficiarios) en PDF (A4)
+   benef-report.jsx — Ficha de nadadores (Grupo 1 / Grupo 2) en PDF (A4)
    ============================================================ */
 function SwimmerGroupReport({ st, list, group }) {
   const coach = st.coach;
   const logoUrl = '/logo.png';
-  const isBen = group === 'BEN';
-  const doctype = isBen ? 'Ficha de Beneficiarios' : 'Ficha de Nadadores DAR';
-  const groupLabel = isBen ? 'beneficiarios' : 'nadadores DAR';
+  const doctype = `Ficha de Nadadores · ${DB.groupLabel(group)}`;
+  const groupLabel = `nadadores del ${DB.groupLabel(group)}`;
   const emptyMsg = `Sin ${groupLabel} registrados.`;
 
   const hombres = list.filter(s => s.genero === 'M').length;
@@ -23,11 +22,11 @@ function SwimmerGroupReport({ st, list, group }) {
     const gt = DB.goldTimeFor(s.prueba, s.genero, s.fechaNacimiento);
     return gt ? DB.proximityPct(s.tiempo, gt) : null;
   };
-  const conTiempo = isBen ? list.filter(s => s.tiempo).length : null;
-  const pcts = isBen ? list.map(pctFor).filter(p => p != null) : [];
+  const conTiempo = list.filter(s => s.tiempo).length;
+  const pcts = list.map(pctFor).filter(p => p != null);
   const avgPct = pcts.length ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length) : null;
 
-  const table1Cols = isBen ? 7 : 5;
+  const table1Cols = 7;
 
   return (
     <div className="report-viewer">
@@ -60,7 +59,7 @@ function SwimmerGroupReport({ st, list, group }) {
           <div className="rp-stats">
             <div className="rp-stat">
               <div className="rp-stat-v">{list.length}</div>
-              <div className="rp-stat-l">{isBen ? 'Beneficiarios' : 'Nadadores DAR'}</div>
+              <div className="rp-stat-l">Nadadores</div>
             </div>
             <div className="rp-stat">
               <div className="rp-stat-v">{hombres}</div>
@@ -70,28 +69,19 @@ function SwimmerGroupReport({ st, list, group }) {
               <div className="rp-stat-v">{mujeres}</div>
               <div className="rp-stat-l">Mujeres</div>
             </div>
-            {isBen ? (
-              <>
-                <div className="rp-stat">
-                  <div className="rp-stat-v">{conTiempo}</div>
-                  <div className="rp-stat-l">Con tiempo registrado</div>
-                </div>
-                <div className="rp-stat rp-stat-hl">
-                  <div className="rp-stat-v">{avgPct != null ? `${avgPct}%` : '—'}</div>
-                  <div className="rp-stat-l">Promedio % del oro sudamericano</div>
-                </div>
-              </>
-            ) : (
-              <div className="rp-stat rp-stat-hl">
-                <div className="rp-stat-v">{avgAge != null ? avgAge : '—'}</div>
-                <div className="rp-stat-l">Edad promedio</div>
-              </div>
-            )}
+            <div className="rp-stat">
+              <div className="rp-stat-v">{conTiempo}</div>
+              <div className="rp-stat-l">Con tiempo registrado</div>
+            </div>
+            <div className="rp-stat rp-stat-hl">
+              <div className="rp-stat-v">{avgPct != null ? `${avgPct}%` : '—'}</div>
+              <div className="rp-stat-l">Promedio % del oro sudamericano</div>
+            </div>
           </div>
         </div>
 
         <div className="rp-section">
-          <h2 className="rp-h">{isBen ? 'Prueba de clasificación' : 'Datos generales'}</h2>
+          <h2 className="rp-h">Prueba de clasificación</h2>
           <table className="rp-table">
             <thead>
               <tr>
@@ -99,35 +89,23 @@ function SwimmerGroupReport({ st, list, group }) {
                 <th>Categoría</th>
                 <th>Género</th>
                 <th>RUT</th>
-                {isBen ? (
-                  <>
-                    <th>Prueba</th>
-                    <th className="num">Tiempo</th>
-                    <th className="num">% Oro</th>
-                  </>
-                ) : (
-                  <th>Club</th>
-                )}
+                <th>Prueba</th>
+                <th className="num">Tiempo</th>
+                <th className="num">% Oro</th>
               </tr>
             </thead>
             <tbody>
               {list.map(s => {
-                const p = isBen ? pctFor(s) : null;
+                const p = pctFor(s);
                 return (
                   <tr key={s.id}>
                     <td className="strong">{s.nombre}</td>
                     <td>{DB.categoryFor(s.fechaNacimiento)}</td>
                     <td>{s.genero === 'F' ? 'Femenino' : 'Masculino'}</td>
                     <td>{s.rut || '—'}</td>
-                    {isBen ? (
-                      <>
-                        <td>{s.prueba || '—'}</td>
-                        <td className="num">{s.tiempo || '—'}</td>
-                        <td className="num strong">{p != null ? `${p}%` : '—'}</td>
-                      </>
-                    ) : (
-                      <td>{s.club || '—'}</td>
-                    )}
+                    <td>{s.prueba || '—'}</td>
+                    <td className="num">{s.tiempo || '—'}</td>
+                    <td className="num strong">{p != null ? `${p}%` : '—'}</td>
                   </tr>
                 );
               })}

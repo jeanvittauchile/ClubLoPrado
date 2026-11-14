@@ -184,20 +184,20 @@ function RemoveSwimmerButton({ swimmer, hasData, onRemove }) {
 /* ---------- Agregar nadador rezagado a la sesión activa ---------- */
 function AddSwimmerModal({ st, excludeIds, onAdd, onClose }) {
   const [sel, setSel] = useState([]);
-  const available = st.swimmers.filter(s => s.group === 'DAR' && !excludeIds.includes(s.id)).sort((a, b) => a.nombre.localeCompare(b.nombre));
+  const available = st.swimmers.filter(s => !excludeIds.includes(s.id)).sort((a, b) => a.nombre.localeCompare(b.nombre));
   const toggle = (id) => setSel(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
   const add = () => { sel.forEach(id => onAdd(id)); onClose(); };
   return (
     <Modal title="Agregar nadador" sub="Se suma a la evaluación en curso, sin afectar lo ya registrado" onClose={onClose}
       foot={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button icon="check" disabled={sel.length === 0} onClick={add}>Agregar{sel.length > 0 ? ` (${sel.length})` : ''}</Button></>}>
-      {available.length === 0 ? <Empty icon="users" title="No hay más nadadores DAR disponibles" /> : (
+      {available.length === 0 ? <Empty icon="users" title="No hay más nadadores disponibles" /> : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
           {available.map(s => (
             <button key={s.id} className="swim-pick" data-on={sel.includes(s.id)} onClick={() => toggle(s.id)}>
               <Avatar name={s.nombre} size={34} />
               <div style={{ minWidth: 0, textAlign: 'left' }}>
                 <div style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.nombre}</div>
-                <div style={{ fontSize: 11.5, color: 'var(--slate-400)' }}>{DB.categoryFor(s.fechaNacimiento)}</div>
+                <div style={{ fontSize: 11.5, color: 'var(--slate-400)' }}>{DB.categoryFor(s.fechaNacimiento)} · {DB.groupLabel(s.group)}</div>
               </div>
               <div className={`swim-check ${sel.includes(s.id) ? 'on' : ''}`}>{sel.includes(s.id) && <Icon name="check" />}</div>
             </button>
@@ -216,7 +216,7 @@ function EvalSetup({ onStart, onCancel }) {
   const [cronoMode, setCronoMode] = useState('individual'); // individual | simultaneo
   const [sel, setSel] = useState([]);
   const proto = protoById(protocolo);
-  const dar = st.swimmers.filter(s => s.group === 'DAR').sort((a, b) => a.nombre.localeCompare(b.nombre));
+  const nadadores = st.swimmers.slice().sort((a, b) => a.nombre.localeCompare(b.nombre));
   const toggle = (id) => setSel(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
 
   return (
@@ -314,14 +314,14 @@ function EvalSetup({ onStart, onCancel }) {
       )}
 
       <div className="section-title"><h2>3 · Nadadores evaluados</h2><div className="line" /><span style={{ fontSize: 13, color: 'var(--slate-500)', fontWeight: 600 }}>{sel.length} seleccionados</span></div>
-      {dar.length === 0 ? <Empty icon="users" title="No hay nadadores DAR" /> : (
+      {nadadores.length === 0 ? <Empty icon="users" title="No hay nadadores registrados" /> : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10, marginBottom: 28 }}>
-          {dar.map(s => (
+          {nadadores.map(s => (
             <button key={s.id} className="swim-pick" data-on={sel.includes(s.id)} onClick={() => toggle(s.id)}>
               <Avatar name={s.nombre} size={34} />
               <div style={{ minWidth: 0, textAlign: 'left' }}>
                 <div style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.nombre}</div>
-                <div style={{ fontSize: 11.5, color: 'var(--slate-400)' }}>{DB.categoryFor(s.fechaNacimiento)}</div>
+                <div style={{ fontSize: 11.5, color: 'var(--slate-400)' }}>{DB.categoryFor(s.fechaNacimiento)} · {DB.groupLabel(s.group)}</div>
               </div>
               <div className={`swim-check ${sel.includes(s.id) ? 'on' : ''}`}>{sel.includes(s.id) && <Icon name="check" />}</div>
             </button>
@@ -1393,7 +1393,7 @@ function ManualEvalForm({ onSave, onCancel }) {
   const proto = protoById(protocolo);
   const plan = useMemo(() => manualPlan(proto, metrica), [protocolo, metrica]);
   const planKey = `${protocolo}:${metrica}:${plan.kind}:${plan.count || 0}`;
-  const dar = st.swimmers.filter(s => s.group === 'DAR').sort((a, b) => a.nombre.localeCompare(b.nombre));
+  const nadadores = st.swimmers.slice().sort((a, b) => a.nombre.localeCompare(b.nombre));
   const effMetrica = plan.kind === 'compuesta' ? 'compuesta' : metrica;
 
   useEffect(() => { setData({}); }, [planKey]);
@@ -1511,12 +1511,12 @@ function ManualEvalForm({ onSave, onCancel }) {
 
       <div className="section-title"><h2>2 · Nadadores y datos</h2><div className="line" /><span style={{ fontSize: 13, color: 'var(--slate-500)', fontWeight: 600 }}>{sel.length} seleccionados</span></div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10, marginBottom: 20 }}>
-        {dar.map(s => (
+        {nadadores.map(s => (
           <button key={s.id} className="swim-pick" data-on={sel.includes(s.id)} onClick={() => toggle(s.id)}>
             <Avatar name={s.nombre} size={34} />
             <div style={{ minWidth: 0, textAlign: 'left' }}>
               <div style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.nombre}</div>
-              <div style={{ fontSize: 11.5, color: 'var(--slate-400)' }}>{DB.categoryFor(s.fechaNacimiento)}</div>
+              <div style={{ fontSize: 11.5, color: 'var(--slate-400)' }}>{DB.categoryFor(s.fechaNacimiento)} · {DB.groupLabel(s.group)}</div>
             </div>
             <div className={`swim-check ${sel.includes(s.id) ? 'on' : ''}`}>{sel.includes(s.id) && <Icon name="check" />}</div>
           </button>

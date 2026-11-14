@@ -13,7 +13,7 @@ import {
    ============================================================ */
 const TR_TYPES = ['Técnica', 'Aeróbico', 'Velocidad', 'Específico', 'Resistencia', 'Recuperación'];
 const TR_TYPE_COLOR = { 'Técnica': 'cyan', 'Aeróbico': 'navy', 'Velocidad': 'red', 'Específico': 'amber', 'Resistencia': 'green', 'Recuperación': 'slate' };
-const TR_EMPTY = { fecha: '', titulo: '', grupo: 'DAR', tipo: 'Técnica', duracion: 90, ubicacion: 'Piscina Olímpica Valdivia', contenido: '' };
+const TR_EMPTY = { fecha: '', titulo: '', grupo: 'G1', tipo: 'Técnica', duracion: 90, ubicacion: 'Piscina Olímpica Valdivia', contenido: '' };
 
 const VOL_META = [
   { k: 'total', label: 'Total', color: 'var(--navy)' },
@@ -94,7 +94,7 @@ function TrainingForm({ initial, presetDate, onSave, onClose }) {
         <Field label="Título del entrenamiento" req><input className="input" value={f.titulo} onChange={set('titulo')} placeholder="Ej: Técnica de viraje y streamline" /></Field>
         <div className="field-grid">
           <Field label="Fecha" req><input type="date" className="input" value={f.fecha} onChange={set('fecha')} /></Field>
-          <Field label="Grupo"><select className="select" value={f.grupo} onChange={set('grupo')}><option value="DAR">DAR</option><option value="BEN">Beneficiarios</option><option value="TODOS">Todos</option></select></Field>
+          <Field label="Grupo"><select className="select" value={f.grupo} onChange={set('grupo')}><option value="G1">Grupo 1</option><option value="G2">Grupo 2</option><option value="TODOS">Todos</option></select></Field>
         </div>
         <div className="field-grid-3">
           <Field label="Tipo"><select className="select" value={f.tipo} onChange={set('tipo')}>{TR_TYPES.map(t => <option key={t}>{t}</option>)}</select></Field>
@@ -124,7 +124,7 @@ function TrainingCard({ t, onEdit, onDelete, highlight }) {
           <div style={{ minWidth: 0 }}>
             <div style={{ display: 'flex', gap: 8, marginBottom: 5, flexWrap: 'wrap' }}>
               <span className={`badge badge-${TR_TYPE_COLOR[t.tipo] || 'slate'}`}>{t.tipo}</span>
-              <span className="badge badge-slate">{t.grupo === 'TODOS' ? 'Todos' : t.grupo === 'DAR' ? 'DAR' : 'Beneficiarios'}</span>
+              <span className="badge badge-slate">{DB.groupLabel(t.grupo)}</span>
               {highlight && <span className="badge badge-cyan">Hoy</span>}
             </div>
             <h3 style={{ fontSize: 16, marginBottom: 3 }}>{t.titulo}</h3>
@@ -167,8 +167,8 @@ function TrainingImport({ onClose }) {
 
   function downloadTemplate() {
     const headers = ['fecha*', 'titulo*', 'grupo', 'tipo', 'duracion', 'ubicacion', 'contenido'];
-    const example = ['2024-03-15', 'Técnica de viraje y streamline', 'DAR', 'Técnica', 90, 'Piscina Olímpica Valdivia', '400 nado suave + movilidad\n8×50 viraje con 5 ondas\n10×100 libre @2:20'];
-    const example2 = ['2024-03-17', 'Trabajo aeróbico base', 'DAR', 'Aeróbico', 120, 'Piscina Olímpica Valdivia', '600 suave\n10×200 libre @3:30\n400 vuelta'];
+    const example = ['2024-03-15', 'Técnica de viraje y streamline', 'G1', 'Técnica', 90, 'Piscina Olímpica Valdivia', '400 nado suave + movilidad\n8×50 viraje con 5 ondas\n10×100 libre @2:20'];
+    const example2 = ['2024-03-17', 'Trabajo aeróbico base', 'G1', 'Aeróbico', 120, 'Piscina Olímpica Valdivia', '600 suave\n10×200 libre @3:30\n400 vuelta'];
     const ws = XLSX.utils.aoa_to_sheet([headers, example, example2]);
     ws['!cols'] = [14, 32, 8, 14, 10, 26, 40].map(wch => ({ wch }));
     const wb = XLSX.utils.book_new();
@@ -187,11 +187,11 @@ function TrainingImport({ onClose }) {
         const raw = XLSX.utils.sheet_to_json(ws, { defval: '' });
         const parsed = raw.map(r => {
           const tipo = String(r['tipo'] || 'Técnica').trim();
-          const grupo = String(r['grupo'] || 'DAR').trim().toUpperCase();
+          const grupo = DB.normalizeGroup(String(r['grupo'] || 'G1').trim().toUpperCase().replace(/^GRUPO\s*/, 'G'));
           return {
             fecha: parseExcelDate(r['fecha*'] || r['fecha']),
             titulo: String(r['titulo*'] || r['titulo'] || '').trim(),
-            grupo: ['DAR', 'BEN', 'TODOS'].includes(grupo) ? grupo : 'DAR',
+            grupo: ['G1', 'G2', 'TODOS'].includes(grupo) ? grupo : 'G1',
             tipo: VALID_TYPES.has(tipo) ? tipo : 'Técnica',
             duracion: Math.max(1, parseInt(r['duracion'], 10) || 90),
             ubicacion: String(r['ubicacion'] || 'Piscina Olímpica Valdivia').trim(),
@@ -229,7 +229,7 @@ function TrainingImport({ onClose }) {
               <div style={{ fontWeight: 700, color: 'var(--cyan-700)', fontSize: 14, marginBottom: 4 }}>1. Descarga la plantilla Excel</div>
               <div style={{ fontSize: 12.5, color: 'var(--cyan-600)', lineHeight: 1.5 }}>
                 Completa los entrenamientos. Las columnas con <strong>*</strong> son obligatorias.<br />
-                La fecha debe ser <code>YYYY-MM-DD</code>. Grupo: <code>DAR</code>, <code>BEN</code> o <code>TODOS</code>.<br />
+                La fecha debe ser <code>YYYY-MM-DD</code>. Grupo: <code>G1</code>, <code>G2</code> o <code>TODOS</code>.<br />
                 Tipos válidos: {TR_TYPES.join(', ')}.
               </div>
             </div>
@@ -270,7 +270,7 @@ function TrainingImport({ onClose }) {
                         <td><span className={`badge badge-${ok ? 'green' : 'red'}`}>{ok ? '✓' : 'Incompleto'}</span></td>
                         <td style={{ fontVariantNumeric: 'tabular-nums' }}>{r.fecha || <span style={{ color: 'var(--red)' }}>—</span>}</td>
                         <td style={{ fontWeight: 600, maxWidth: 180 }}>{r.titulo || <span style={{ color: 'var(--red)' }}>—</span>}</td>
-                        <td><span className="badge badge-slate">{r.grupo}</span></td>
+                        <td><span className="badge badge-slate">{DB.groupLabel(r.grupo)}</span></td>
                         <td><span className={`badge badge-${TR_TYPE_COLOR[r.tipo] || 'slate'}`}>{r.tipo}</span></td>
                         <td>{r.duracion} min</td>
                       </tr>

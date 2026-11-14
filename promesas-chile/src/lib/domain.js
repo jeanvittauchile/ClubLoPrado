@@ -316,7 +316,7 @@ export function proximityPct(swimmerTime, goldTime) {
 
 /* ---------- Datos de demostración (mismos del prototipo) ---------- */
 export function seed() {
-  const dar = [
+  const g1 = [
     ['Martín Fuentes Rojas', '24.815.302-7', '2012-03-14', 'M', 'martin.fuentes@mail.com', 'Carolina Rojas', 'caro.rojas@mail.com', '+56 9 8123 4567', 'Club Náutico Valdivia', 'Av. Picarte 1820, Valdivia', 'Colegio San Luis'],
     ['Valentina Soto Méndez', '25.102.778-K', '2011-07-02', 'F', 'valen.soto@mail.com', 'Patricia Méndez', 'patricia.m@mail.com', '+56 9 9234 1122', 'Club Náutico Valdivia', 'Los Robles 455, Valdivia', 'Instituto Salesiano'],
     ['Benjamín Cárcamo Díaz', '25.330.991-2', '2013-11-21', 'M', 'benja.carcamo@mail.com', 'Rodrigo Cárcamo', 'r.carcamo@mail.com', '+56 9 7345 6677', 'Escuela Delfines', 'Yungay 980, Valdivia', 'Colegio Alemán'],
@@ -326,7 +326,7 @@ export function seed() {
     ['Agustín Reyes Mora', '25.560.114-8', '2012-08-25', 'M', 'agustin.reyes@mail.com', 'Claudia Mora', 'c.mora@mail.com', '+56 9 3789 0011', 'Escuela Delfines', 'Independencia 410, Valdivia', 'Colegio Alemán'],
     ['Florencia Pino Tapia', '25.210.443-6', '2011-02-11', 'F', 'flor.pino@mail.com', 'Sergio Pino', 's.pino@mail.com', '+56 9 2890 1122', 'Club Náutico Valdivia', 'Chacabuco 1540, Valdivia', 'Liceo Santa María'],
   ];
-  const ben = [
+  const g2 = [
     ['Lucas Herrera Bravo', '25.640.778-4', '2012-06-19', 'M', 'lucas.h@mail.com', 'Daniela Bravo', 'd.bravo@mail.com', '+56 9 8011 2233', 'Club Osorno', 'Mackenna 50, Osorno', 'Colegio Inmaculada'],
     ['Antonia Gallardo Ríos', '25.119.882-0', '2011-10-05', 'F', 'anto.gallardo@mail.com', 'Pablo Gallardo', 'p.gallardo@mail.com', '+56 9 8122 3344', 'Club Puerto Montt', 'Urmeneta 320, Pto Montt', 'Liceo San Felipe'],
     ['Matías Espinoza Vera', '25.388.201-3', '2013-04-27', 'M', 'matias.e@mail.com', 'Lorena Vera', 'l.vera@mail.com', '+56 9 8233 4455', 'Club Osorno', 'Bilbao 770, Osorno', 'Colegio Inmaculada'],
@@ -347,20 +347,20 @@ export function seed() {
     club: a[8], direccion: a[9], colegio: a[10],
     activo: true, justificacion: '', creado: a[2],
   });
-  const swimmers = [...dar.map(s => mk(s, 'DAR')), ...ben.map(s => mk(s, 'BEN'))];
+  const swimmers = [...g1.map(s => mk(s, 'G1')), ...g2.map(s => mk(s, 'G2'))];
 
   const today = new Date();
   const iso = (d) => d.toISOString().slice(0, 10);
   const dOff = (n) => { const x = new Date(today); x.setDate(x.getDate() + n); return x; };
   const trainings = [
-    { id: uid(), fecha: iso(today), titulo: 'Técnica de viraje y streamline', grupo: 'DAR', tipo: 'Técnica', duracion: 90, ubicacion: 'Piscina Olímpica Valdivia', contenido: '400 nado suave + movilidad\n8×50 viraje con 5 ondas subacuático\n10×100 libre @2:20 control de brazadas\n200 vuelta a la calma' },
-    { id: uid(), fecha: iso(dOff(-1)), titulo: 'Resistencia aeróbica', grupo: 'DAR', tipo: 'Aeróbico', duracion: 100, ubicacion: 'Piscina Olímpica Valdivia', contenido: '600 calentamiento mixto\n3×(400 libre + 100 patada)\n300 combinado suave' },
-    { id: uid(), fecha: iso(dOff(2)), titulo: 'Velocidad y salidas', grupo: 'DAR', tipo: 'Velocidad', duracion: 80, ubicacion: 'Piscina Olímpica Valdivia', contenido: '500 progresivo\n12×25 sprint con salida\n6×50 mariposa control brazadas\n200 suave' },
-    { id: uid(), fecha: iso(dOff(4)), titulo: 'Preparación de prueba 200 combinado', grupo: 'DAR', tipo: 'Específico', duracion: 90, ubicacion: 'Piscina Olímpica Valdivia', contenido: 'Calentamiento competición\n1×200 combinado situación de competencia\nAnálisis de estrategia por tramo' },
+    { id: uid(), fecha: iso(today), titulo: 'Técnica de viraje y streamline', grupo: 'G1', tipo: 'Técnica', duracion: 90, ubicacion: 'Piscina Olímpica Valdivia', contenido: '400 nado suave + movilidad\n8×50 viraje con 5 ondas subacuático\n10×100 libre @2:20 control de brazadas\n200 vuelta a la calma' },
+    { id: uid(), fecha: iso(dOff(-1)), titulo: 'Resistencia aeróbica', grupo: 'G1', tipo: 'Aeróbico', duracion: 100, ubicacion: 'Piscina Olímpica Valdivia', contenido: '600 calentamiento mixto\n3×(400 libre + 100 patada)\n300 combinado suave' },
+    { id: uid(), fecha: iso(dOff(2)), titulo: 'Velocidad y salidas', grupo: 'G1', tipo: 'Velocidad', duracion: 80, ubicacion: 'Piscina Olímpica Valdivia', contenido: '500 progresivo\n12×25 sprint con salida\n6×50 mariposa control brazadas\n200 suave' },
+    { id: uid(), fecha: iso(dOff(4)), titulo: 'Preparación de prueba 200 combinado', grupo: 'G1', tipo: 'Específico', duracion: 90, ubicacion: 'Piscina Olímpica Valdivia', contenido: 'Calentamiento competición\n1×200 combinado situación de competencia\nAnálisis de estrategia por tramo' },
   ];
 
   const attendance = {};
-  const darIds = swimmers.filter(s => s.group === 'DAR').map(s => s.id);
+  const g1Ids = swimmers.filter(s => s.group === 'G1').map(s => s.id);
   const ym = today.toISOString().slice(0, 7);
   const sessionDays = [];
   for (let d = 1; d <= today.getDate(); d++) {
@@ -368,7 +368,7 @@ export function seed() {
     const wd = dt.getDay();
     if (wd === 1 || wd === 3 || wd === 5) sessionDays.push(`${ym}-${String(d).padStart(2, '0')}`);
   }
-  darIds.forEach((id, i) => {
+  g1Ids.forEach((id, i) => {
     attendance[id] = {};
     sessionDays.forEach((day, j) => { attendance[id][day] = !((i + j) % 7 === 0); });
   });
@@ -376,47 +376,47 @@ export function seed() {
   const evaluations = [
     {
       id: uid(), fecha: iso(dOff(-18)), protocolo: 'libre', metrica: 'cronometro',
-      swimmerIds: [darIds[0], darIds[1], darIds[3]], tecnico: 'Coach Lo Prado',
+      swimmerIds: [g1Ids[0], g1Ids[1], g1Ids[3]], tecnico: 'Coach Lo Prado',
       notas: 'Primer control del mes. Base de referencia.',
       data: {
-        [darIds[0]]: { laps: [88.4, 89.0, 88.8, 89.5, 90.2, 90.0, 90.9, 91.5, 92.3, 93.6], total: 904.2 },
-        [darIds[1]]: { laps: [90.1, 90.6, 90.4, 91.2, 91.9, 91.7, 92.6, 93.0, 93.9, 95.0], total: 920.4 },
-        [darIds[3]]: { laps: [86.8, 87.2, 87.0, 87.6, 88.3, 88.1, 88.9, 89.4, 90.2, 91.5], total: 885.0 },
+        [g1Ids[0]]: { laps: [88.4, 89.0, 88.8, 89.5, 90.2, 90.0, 90.9, 91.5, 92.3, 93.6], total: 904.2 },
+        [g1Ids[1]]: { laps: [90.1, 90.6, 90.4, 91.2, 91.9, 91.7, 92.6, 93.0, 93.9, 95.0], total: 920.4 },
+        [g1Ids[3]]: { laps: [86.8, 87.2, 87.0, 87.6, 88.3, 88.1, 88.9, 89.4, 90.2, 91.5], total: 885.0 },
       },
     },
     {
       id: uid(), fecha: iso(dOff(-10)), protocolo: 'libre', metrica: 'cronometro',
-      swimmerIds: [darIds[0], darIds[1], darIds[3]], tecnico: 'Coach Lo Prado',
+      swimmerIds: [g1Ids[0], g1Ids[1], g1Ids[3]], tecnico: 'Coach Lo Prado',
       notas: 'Mejora en el sostenimiento del ritmo respecto al control anterior.',
       data: {
-        [darIds[0]]: { laps: [86.9, 87.4, 87.2, 87.8, 88.4, 88.2, 89.0, 89.6, 90.3, 91.4], total: 886.2 },
-        [darIds[1]]: { laps: [89.0, 89.5, 89.3, 90.0, 90.7, 90.5, 91.3, 91.8, 92.6, 93.7], total: 908.4 },
-        [darIds[3]]: { laps: [85.5, 85.9, 85.7, 86.2, 86.9, 86.7, 87.4, 87.9, 88.6, 89.7], total: 870.5 },
+        [g1Ids[0]]: { laps: [86.9, 87.4, 87.2, 87.8, 88.4, 88.2, 89.0, 89.6, 90.3, 91.4], total: 886.2 },
+        [g1Ids[1]]: { laps: [89.0, 89.5, 89.3, 90.0, 90.7, 90.5, 91.3, 91.8, 92.6, 93.7], total: 908.4 },
+        [g1Ids[3]]: { laps: [85.5, 85.9, 85.7, 86.2, 86.9, 86.7, 87.4, 87.9, 88.6, 89.7], total: 870.5 },
       },
     },
     {
       id: uid(), fecha: iso(dOff(-2)), protocolo: 'libre', metrica: 'cronometro',
-      swimmerIds: [darIds[0], darIds[1]], tecnico: 'Coach Lo Prado',
+      swimmerIds: [g1Ids[0], g1Ids[1]], tecnico: 'Coach Lo Prado',
       notas: 'Buen control de ritmo en repeticiones 1-6, leve caída al final.',
       data: {
-        [darIds[0]]: { laps: [85.2, 86.1, 85.9, 86.4, 87.0, 86.8, 87.5, 88.1, 88.9, 90.2], total: 872.1 },
-        [darIds[1]]: { laps: [88.5, 89.0, 88.7, 89.4, 90.1, 90.0, 90.8, 91.2, 92.0, 93.1], total: 902.8 },
+        [g1Ids[0]]: { laps: [85.2, 86.1, 85.9, 86.4, 87.0, 86.8, 87.5, 88.1, 88.9, 90.2], total: 872.1 },
+        [g1Ids[1]]: { laps: [88.5, 89.0, 88.7, 89.4, 90.1, 90.0, 90.8, 91.2, 92.0, 93.1], total: 902.8 },
       },
     },
     {
       id: uid(), fecha: iso(dOff(-2)), protocolo: 'libre', metrica: 'brazadas',
-      swimmerIds: [darIds[0], darIds[3]], tecnico: 'Coach Lo Prado',
+      swimmerIds: [g1Ids[0], g1Ids[3]], tecnico: 'Coach Lo Prado',
       notas: 'Mantiene 16-17 brazadas por tramo de 50, objetivo bajar a 15.',
-      data: { [darIds[0]]: { tramos: [16, 16, 17, 16, 17, 17, 18, 17, 18, 19] }, [darIds[3]]: { tramos: [15, 15, 16, 15, 16, 16, 16, 17, 17, 18] } },
+      data: { [g1Ids[0]]: { tramos: [16, 16, 17, 16, 17, 17, 18, 17, 18, 19] }, [g1Ids[3]]: { tramos: [15, 15, 16, 15, 16, 16, 16, 17, 17, 18] } },
     },
     {
       id: uid(), fecha: iso(dOff(-6)), protocolo: 'salida15', metrica: 'compuesta',
-      swimmerIds: [darIds[0], darIds[1], darIds[3]], tecnico: 'Coach Lo Prado',
+      swimmerIds: [g1Ids[0], g1Ids[1], g1Ids[3]], tecnico: 'Coach Lo Prado',
       notas: 'Control de salida. Trabajar la coordinación delfín-estilo.',
       data: {
-        [darIds[0]]: { intentos: [{ tiempo: 7.2, subacuatico: 4, brazadas: 6 }, { tiempo: 7.0, subacuatico: 5, brazadas: 6 }] },
-        [darIds[1]]: { intentos: [{ tiempo: 7.6, subacuatico: 3, brazadas: 7 }] },
-        [darIds[3]]: { intentos: [{ tiempo: 6.8, subacuatico: 5, brazadas: 5 }, { tiempo: 6.7, subacuatico: 5, brazadas: 5 }] },
+        [g1Ids[0]]: { intentos: [{ tiempo: 7.2, subacuatico: 4, brazadas: 6 }, { tiempo: 7.0, subacuatico: 5, brazadas: 6 }] },
+        [g1Ids[1]]: { intentos: [{ tiempo: 7.6, subacuatico: 3, brazadas: 7 }] },
+        [g1Ids[3]]: { intentos: [{ tiempo: 6.8, subacuatico: 5, brazadas: 5 }, { tiempo: 6.7, subacuatico: 5, brazadas: 5 }] },
       },
     },
   ];
@@ -435,4 +435,25 @@ export function emptyState() {
     swimmers: [], trainings: [], attendance: {}, evaluations: [], bajas: [], reports: {},
     goldTimes: {},
   };
+}
+
+/* ---------- Grupos del club ---------- */
+export const GROUPS = [
+  { id: 'G1', label: 'Grupo 1' },
+  { id: 'G2', label: 'Grupo 2' },
+];
+const LEGACY_GROUP = { DAR: 'G1', BEN: 'G2' };
+export function normalizeGroup(g) { return LEGACY_GROUP[g] || g; }
+export function groupLabel(g) {
+  if (g === 'TODOS') return 'Todos';
+  const found = GROUPS.find(x => x.id === normalizeGroup(g));
+  return found ? found.label : (g || '—');
+}
+/** Convierte códigos antiguos (DAR/BEN) a G1/G2 en todo el estado. */
+export function normalizeGroups(st) {
+  if (!st) return st;
+  st.swimmers = (st.swimmers || []).map(s => ({ ...s, group: normalizeGroup(s.group) }));
+  st.bajas = (st.bajas || []).map(b => ({ ...b, group: normalizeGroup(b.group) }));
+  st.trainings = (st.trainings || []).map(t => ({ ...t, grupo: normalizeGroup(t.grupo) }));
+  return st;
 }

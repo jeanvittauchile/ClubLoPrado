@@ -21,7 +21,7 @@ function ReportsView() {
 
   const shiftMonth = (d) => { const dt = new Date(yy, mm - 1 + d, 1); setYm(`${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`); };
 
-  const dar = useMemo(() => st.swimmers.filter(s => s.group === 'DAR').sort((a, b) => a.nombre.localeCompare(b.nombre)), [st.swimmers]);
+  const nadadores = useMemo(() => st.swimmers.slice().sort((a, b) => a.nombre.localeCompare(b.nombre)), [st.swimmers]);
 
   const trainingDays = useMemo(() => {
     const set = new Set();
@@ -31,18 +31,18 @@ function ReportsView() {
 
   const activeDays = useMemo(() => {
     const set = new Set(trainingDays.map(d => +d.slice(8)));
-    dar.forEach(s => { const a = st.attendance[s.id] || {}; Object.keys(a).forEach(k => { if (k.startsWith(ym) && a[k]) set.add(+k.slice(8)); }); });
+    nadadores.forEach(s => { const a = st.attendance[s.id] || {}; Object.keys(a).forEach(k => { if (k.startsWith(ym) && a[k]) set.add(+k.slice(8)); }); });
     return [...set].sort((a, b) => a - b);
-  }, [trainingDays, dar, st.attendance, ym]);
+  }, [trainingDays, nadadores, st.attendance, ym]);
 
-  const attRows = dar.map(s => {
+  const attRows = nadadores.map(s => {
     const a = st.attendance[s.id] || {};
     const present = activeDays.filter(d => a[`${ym}-${String(d).padStart(2, '0')}`]).length;
     const pct = activeDays.length ? Math.round((present / activeDays.length) * 100) : 0;
     return { s, present, pct };
   });
   const totalPresent = attRows.reduce((n, r) => n + r.present, 0);
-  const possible = activeDays.length * dar.length;
+  const possible = activeDays.length * nadadores.length;
   const globalPct = possible ? Math.round((totalPresent / possible) * 100) : 0;
 
   const monthEvals = st.evaluations.filter(e => e.fecha.startsWith(ym)).sort((a, b) => a.fecha.localeCompare(b.fecha));
@@ -86,7 +86,7 @@ function ReportsView() {
           </div>
 
           <div style={{ overflowX: 'auto' }}>
-            <ReportPaper {...{ st, ym, yy, mm, dar, activeDays, attRows, totalPresent, possible, globalPct, monthEvals, monthTrainings, meta, logoUrl, protoById, metricMeta }} />
+            <ReportPaper {...{ st, ym, yy, mm, nadadores, activeDays, attRows, totalPresent, possible, globalPct, monthEvals, monthTrainings, meta, logoUrl, protoById, metricMeta }} />
           </div>
         </div>
       )}
@@ -95,7 +95,7 @@ function ReportsView() {
 }
 
 /* ── ReportPaper: 2 páginas A4 ── */
-function ReportPaper({ st, ym, yy, mm, dar, activeDays, attRows, totalPresent, possible, globalPct, monthEvals, monthTrainings, meta, logoUrl, protoById, metricMeta }) {
+function ReportPaper({ st, ym, yy, mm, nadadores, activeDays, attRows, totalPresent, possible, globalPct, monthEvals, monthTrainings, meta, logoUrl, protoById, metricMeta }) {
   const coach = st.coach;
   const VOLM = [
     { k: 'total', label: 'Total', color: 'var(--navy)' },
@@ -143,8 +143,8 @@ function ReportPaper({ st, ym, yy, mm, dar, activeDays, attRows, totalPresent, p
           <h2 className="rp-h">Resumen del mes</h2>
           <div className="rp-stats">
             <div className="rp-stat">
-              <div className="rp-stat-v">{dar.length}</div>
-              <div className="rp-stat-l">Nadadores DAR</div>
+              <div className="rp-stat-v">{nadadores.length}</div>
+              <div className="rp-stat-l">Nadadores</div>
             </div>
             <div className="rp-stat">
               <div className="rp-stat-v">{monthTrainings.length}</div>
@@ -200,7 +200,7 @@ function ReportPaper({ st, ym, yy, mm, dar, activeDays, attRows, totalPresent, p
               ))}
               {attRows.length === 0 && (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', color: '#8A99A6', padding: '20px 10px' }}>Sin nadadores DAR registrados.</td>
+                  <td colSpan={6} style={{ textAlign: 'center', color: '#8A99A6', padding: '20px 10px' }}>Sin nadadores registrados.</td>
                 </tr>
               )}
             </tbody>

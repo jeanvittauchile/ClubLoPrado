@@ -88,7 +88,7 @@ const NAV = [
 ];
 const TITLES = {
   dashboard: ['Inicio', 'Resumen general del programa'],
-  swimmers: ['Nadadores', 'Gestión de fichas — DAR y Beneficiarios'],
+  swimmers: ['Nadadores', 'Gestión de fichas — Grupo 1 y Grupo 2'],
   attendance: ['Asistencia', 'Panel mensual de asistencia'],
   trainings: ['Entrenamientos', 'Calendario y planificación de sesiones'],
   evaluations: ['Evaluaciones', 'Cronómetro, brazadas y movimientos subacuáticos'],

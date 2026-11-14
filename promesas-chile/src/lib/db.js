@@ -17,7 +17,7 @@ import {
   categoryFor, ageFor, levelFor, parseVolume, volumenFor, uid,
   PRUEBAS, EVENT_KEY, GOLD_CATS, DEFAULT_GOLD_TIMES,
   parseSwimTime, goldTimeFor as _goldTimeFor, proximityPct,
-  emptyState, seed,
+  emptyState, seed, GROUPS, groupLabel, normalizeGroup, normalizeGroups,
 } from './domain.js';
 
 const cacheKey = (userId) => `pcn_cache_v1:${userId || 'local'}`;
@@ -41,7 +41,7 @@ function commit() { persistCache(); emit(); }
 function loadCache() {
   try {
     const raw = localStorage.getItem(cacheKey(userId));
-    if (raw) { state = JSON.parse(raw); return true; }
+    if (raw) { state = normalizeGroups(JSON.parse(raw)); return true; }
   } catch (e) { /* ignore */ }
   return false;
 }
@@ -165,7 +165,7 @@ async function hydrateFromCloud() {
       return;
     }
 
-    state = next;
+    state = normalizeGroups(next);
     commit();
   } catch (e) {
     console.warn('[hydrate] no se pudo leer de la nube (se usa caché local):', e?.message);
@@ -213,7 +213,7 @@ function teardown() {
 
 /* ---------- API pública (idéntica al prototipo) ---------- */
 export const DB = {
-  PROTOCOLS, METRIC_TYPES, CAT_BY_YEAR, PRUEBAS, EVENT_KEY, GOLD_CATS, DEFAULT_GOLD_TIMES,
+  PROTOCOLS, METRIC_TYPES, CAT_BY_YEAR, PRUEBAS, EVENT_KEY, GOLD_CATS, DEFAULT_GOLD_TIMES, GROUPS, groupLabel, normalizeGroup,
   categoryFor, ageFor, levelFor, parseVolume, volumenFor, uid, parseSwimTime, proximityPct,
   goldTimeFor(prueba, genero, fechaNac) { return _goldTimeFor(prueba, genero, fechaNac, state.goldTimes); },
   updateGoldTime(cat, genero, key, time) {

@@ -15,7 +15,7 @@ function AttendanceView() {
   const toast = useToast();
   const now = new Date();
   const [ym, setYm] = useState(todayISO().slice(0, 7));
-  const [group, setGroup] = useState('DAR');
+  const [group, setGroup] = useState('G1');
 
   const [yy, mm] = ym.split('-').map(Number);
   const daysInMonth = new Date(yy, mm, 0).getDate();
@@ -57,8 +57,8 @@ function AttendanceView() {
     <div>
       <div className="toolbar">
         <div className="tabs">
-          <button className={`tab ${group === 'DAR' ? 'active' : ''}`} onClick={() => setGroup('DAR')}>DAR</button>
-          <button className={`tab ${group === 'BEN' ? 'active' : ''}`} onClick={() => setGroup('BEN')}>Beneficiarios</button>
+          <button className={`tab ${group === 'G1' ? 'active' : ''}`} onClick={() => setGroup('G1')}>Grupo 1</button>
+          <button className={`tab ${group === 'G2' ? 'active' : ''}`} onClick={() => setGroup('G2')}>Grupo 2</button>
         </div>
         <div style={{ flex: 1 }} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', padding: 4 }}>
@@ -88,7 +88,7 @@ function AttendanceView() {
         <div className="card-head">
           <div className="ico"><Icon name="checkSquare" /></div>
           <div style={{ flex: 1 }}>
-            <h3>Asistencia diaria · {group === 'DAR' ? 'Grupo DAR' : 'Beneficiarios'}</h3>
+            <h3>Asistencia diaria · {DB.groupLabel(group)}</h3>
             <div style={{ fontSize: 12.5, color: 'var(--slate-500)' }}>Marca cada día de entrenamiento. Las columnas turquesa tienen entrenamiento programado.</div>
           </div>
         </div>

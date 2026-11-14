@@ -15,19 +15,20 @@ function Dashboard({ go }) {
   const today = todayISO();
   const ym = today.slice(0, 7);
 
-  const dar = st.swimmers.filter(s => s.group === 'DAR');
-  const ben = st.swimmers.filter(s => s.group === 'BEN');
+  const nadadores = st.swimmers.slice();
+  const g1 = st.swimmers.filter(s => s.group === 'G1');
+  const g2 = st.swimmers.filter(s => s.group === 'G2');
   const todayTrainings = st.trainings.filter(t => t.fecha === today).sort((a, b) => a.titulo.localeCompare(b.titulo));
 
-  // today's attendance for DAR
-  const presentToday = dar.filter(s => st.attendance[s.id] && st.attendance[s.id][today]).length;
+  // asistencia de hoy, todos los nadadores
+  const presentToday = nadadores.filter(s => st.attendance[s.id] && st.attendance[s.id][today]).length;
 
   // month attendance rate
   const activeDays = new Set();
   st.trainings.forEach(t => { if (t.fecha.startsWith(ym)) activeDays.add(t.fecha.slice(8)); });
-  dar.forEach(s => { const a = st.attendance[s.id] || {}; Object.keys(a).forEach(k => { if (k.startsWith(ym) && a[k]) activeDays.add(k.slice(8)); }); });
-  let pres = 0; dar.forEach(s => { const a = st.attendance[s.id] || {}; Object.keys(a).forEach(k => { if (k.startsWith(ym) && a[k]) pres++; }); });
-  const possible = activeDays.size * dar.length;
+  nadadores.forEach(s => { const a = st.attendance[s.id] || {}; Object.keys(a).forEach(k => { if (k.startsWith(ym) && a[k]) activeDays.add(k.slice(8)); }); });
+  let pres = 0; nadadores.forEach(s => { const a = st.attendance[s.id] || {}; Object.keys(a).forEach(k => { if (k.startsWith(ym) && a[k]) pres++; }); });
+  const possible = activeDays.size * nadadores.length;
   const pct = possible ? Math.round((pres / possible) * 100) : 0;
 
   const monthEvals = st.evaluations.filter(e => e.fecha.startsWith(ym));
@@ -38,10 +39,10 @@ function Dashboard({ go }) {
   const mm = (m) => DB.METRIC_TYPES[m];
 
   const stats = [
-    { label: 'Nadadores DAR', value: dar.length, icon: 'users', bg: 'var(--cyan-050)', fg: 'var(--cyan-700)', sub: `${ben.length} beneficiarios` },
+    { label: 'Nadadores', value: nadadores.length, icon: 'users', bg: 'var(--cyan-050)', fg: 'var(--cyan-700)', sub: `${g1.length} Grupo 1 · ${g2.length} Grupo 2` },
     { label: 'Asistencia del mes', value: pct + '%', icon: 'trend', bg: 'var(--green-bg)', fg: 'var(--green)', sub: `${pres} asistencias` },
     { label: 'Evaluaciones del mes', value: monthEvals.length, icon: 'award', bg: '#efeafb', fg: '#7B5BD6', sub: `${st.evaluations.length} en total` },
-    { label: 'Presentes hoy', value: `${presentToday}/${dar.length}`, icon: 'checkSquare', bg: 'var(--amber-bg)', fg: 'var(--amber)', sub: fmtDate(today) },
+    { label: 'Presentes hoy', value: `${presentToday}/${nadadores.length}`, icon: 'checkSquare', bg: 'var(--amber-bg)', fg: 'var(--amber)', sub: fmtDate(today) },
   ];
 
   return (
@@ -72,7 +73,7 @@ function Dashboard({ go }) {
                 <div key={t.id} style={{ marginBottom: 14 }}>
                   <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
                     <span className={`badge badge-${TR_TYPE_COLOR[t.tipo] || 'cyan'}`}>{t.tipo}</span>
-                    <span className="badge badge-slate">{t.grupo === 'TODOS' ? 'Todos' : t.grupo}</span>
+                    <span className="badge badge-slate">{DB.groupLabel(t.grupo)}</span>
                     <span className="badge badge-slate">{t.duracion} min</span>
                   </div>
                   <h3 style={{ fontSize: 17, marginBottom: 10 }}>{t.titulo}</h3>
@@ -86,11 +87,11 @@ function Dashboard({ go }) {
           <div className="card" style={{ marginTop: 22 }}>
             <div className="card-head">
               <div className="ico"><Icon name="checkSquare" /></div>
-              <div style={{ flex: 1 }}><h3>Asistencia de hoy · DAR</h3><div style={{ fontSize: 12.5, color: 'var(--slate-500)' }}>Marca rápida — toca para registrar</div></div>
+              <div style={{ flex: 1 }}><h3>Asistencia de hoy</h3><div style={{ fontSize: 12.5, color: 'var(--slate-500)' }}>Marca rápida — toca para registrar</div></div>
               <Button variant="ghost" size="sm" onClick={() => go('attendance')}>Panel mensual</Button>
             </div>
             <div className="card-pad" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {dar.sort((a, b) => a.nombre.localeCompare(b.nombre)).map(s => {
+              {nadadores.sort((a, b) => a.nombre.localeCompare(b.nombre)).map(s => {
                 const on = st.attendance[s.id] && st.attendance[s.id][today];
                 return (
                   <div key={s.id} className="quick-att" data-on={!!on} onClick={() => DB.toggleAttendance(s.id, today)}>
