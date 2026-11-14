@@ -20,8 +20,18 @@ function Dashboard({ go }) {
   const g2 = st.swimmers.filter(s => s.group === 'G2');
   const todayTrainings = st.trainings.filter(t => t.fecha === today).sort((a, b) => a.titulo.localeCompare(b.titulo));
 
-  // asistencia de hoy, todos los nadadores
-  const presentToday = nadadores.filter(s => st.attendance[s.id] && st.attendance[s.id][today]).length;
+  // asistencia de hoy: sólo los grupos que entrenan hoy (sin entrenamiento → todos)
+  const isPresent = (s) => !!(st.attendance[s.id] && st.attendance[s.id][today]);
+  const groupsToday = new Set(todayTrainings.map(t => t.grupo));
+  const allToday = groupsToday.size === 0 || groupsToday.has('TODOS');
+  const todayList = nadadores
+    .filter(s => allToday || groupsToday.has(s.group) || isPresent(s))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
+  const todayLabel = groupsToday.size === 0
+    ? 'Sin entrenamiento hoy · todos los nadadores'
+    : allToday ? 'Entrenan todos los grupos'
+    : `Entrena hoy: ${[...groupsToday].sort().map(g => DB.groupLabel(g)).join(' y ')}`;
+  const presentToday = todayList.filter(isPresent).length;
 
   // month attendance rate
   const activeDays = new Set();
@@ -42,7 +52,7 @@ function Dashboard({ go }) {
     { label: 'Nadadores', value: nadadores.length, icon: 'users', bg: 'var(--cyan-050)', fg: 'var(--cyan-700)', sub: `${g1.length} Grupo 1 · ${g2.length} Grupo 2` },
     { label: 'Asistencia del mes', value: pct + '%', icon: 'trend', bg: 'var(--green-bg)', fg: 'var(--green)', sub: `${pres} asistencias` },
     { label: 'Evaluaciones del mes', value: monthEvals.length, icon: 'award', bg: '#efeafb', fg: '#7B5BD6', sub: `${st.evaluations.length} en total` },
-    { label: 'Presentes hoy', value: `${presentToday}/${nadadores.length}`, icon: 'checkSquare', bg: 'var(--amber-bg)', fg: 'var(--amber)', sub: fmtDate(today) },
+    { label: 'Presentes hoy', value: `${presentToday}/${todayList.length}`, icon: 'checkSquare', bg: 'var(--amber-bg)', fg: 'var(--amber)', sub: fmtDate(today) },
   ];
 
   return (
@@ -87,18 +97,18 @@ function Dashboard({ go }) {
           <div className="card" style={{ marginTop: 22 }}>
             <div className="card-head">
               <div className="ico"><Icon name="checkSquare" /></div>
-              <div style={{ flex: 1 }}><h3>Asistencia de hoy</h3><div style={{ fontSize: 12.5, color: 'var(--slate-500)' }}>Marca rápida — toca para registrar</div></div>
+              <div style={{ flex: 1 }}><h3>Asistencia de hoy</h3><div style={{ fontSize: 12.5, color: 'var(--slate-500)' }}>{todayLabel} — toca para registrar</div></div>
               <Button variant="ghost" size="sm" onClick={() => go('attendance')}>Panel mensual</Button>
             </div>
             <div className="card-pad" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {nadadores.sort((a, b) => a.nombre.localeCompare(b.nombre)).map(s => {
-                const on = st.attendance[s.id] && st.attendance[s.id][today];
+              {todayList.map(s => {
+                const on = isPresent(s);
                 return (
                   <div key={s.id} className="quick-att" data-on={!!on} onClick={() => DB.toggleAttendance(s.id, today)}>
                     <Avatar name={s.nombre} size={32} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--ink)' }}>{s.nombre}</div>
-                      <div style={{ fontSize: 11.5, color: 'var(--slate-400)' }}>{DB.categoryFor(s.fechaNacimiento)}</div>
+                      <div style={{ fontSize: 11.5, color: 'var(--slate-400)' }}>{DB.categoryFor(s.fechaNacimiento)} · {DB.groupLabel(s.group)}</div>
                     </div>
                     <div className={`att-box ${on ? 'on' : ''}`}>{on && <Icon name="check" />}</div>
                   </div>
