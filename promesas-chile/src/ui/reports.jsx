@@ -118,9 +118,9 @@ function ReportPaper({ st, ym, yy, mm, dar, activeDays, attRows, totalPresent, p
         {/* Cabecera */}
         <div className="rp-header">
           <div className="rp-brand">
-            <img src={logoUrl} alt="Promesas Chile" />
+            <img src={logoUrl} alt="Club Natación Lo Prado" />
             <div>
-              <div className="rp-program">Promesas Chile · Natación</div>
+              <div className="rp-program">Club Natación Lo Prado</div>
               <div className="rp-doctype">Informe Mensual de Proceso</div>
             </div>
           </div>
@@ -224,7 +224,7 @@ function ReportPaper({ st, ym, yy, mm, dar, activeDays, attRows, totalPresent, p
       <div className="report-page">
         {/* Cabecera de continuación */}
         <div className="rp-cont-header">
-          <span className="rp-cont-title">Promesas Chile · Natación — Informe Mensual de Proceso</span>
+          <span className="rp-cont-title">Club Natación Lo Prado — Informe Mensual de Proceso</span>
           <span className="rp-cont-meta">{MONTHS[mm - 1]} {yy}</span>
         </div>
 

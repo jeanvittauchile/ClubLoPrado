@@ -152,9 +152,9 @@ function EvalReport({ st, ym }) {
         {/* Cabecera */}
         <div className="rp-header">
           <div className="rp-brand">
-            <img src={logoUrl} alt="Promesas Chile" />
+            <img src={logoUrl} alt="Club Natación Lo Prado" />
             <div>
-              <div className="rp-program">Promesas Chile · Natación</div>
+              <div className="rp-program">Club Natación Lo Prado</div>
               <div className="rp-doctype">Informe de Resultados de Evaluaciones</div>
             </div>
           </div>
@@ -245,7 +245,7 @@ function EvalReport({ st, ym }) {
         <div className="report-page">
           {/* Cabecera de continuación */}
           <div className="rp-cont-header">
-            <span className="rp-cont-title">Promesas Chile · Natación — Resultados de Evaluaciones</span>
+            <span className="rp-cont-title">Club Natación Lo Prado — Resultados de Evaluaciones</span>
             <span className="rp-cont-meta">{MONTHS[mm - 1]} {yy}</span>
           </div>
 

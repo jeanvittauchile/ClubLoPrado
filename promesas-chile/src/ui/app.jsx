@@ -109,7 +109,7 @@ function Shell() {
     <div className="app">
       {navOpen && <div className="scrim" onClick={() => setNavOpen(false)} />}
       <aside className={`sidebar ${navOpen ? 'open' : ''}`}>
-        <div className="logo-wrap"><img src={LOGO} alt="Promesas Chile" /></div>
+        <div className="logo-wrap"><img src={LOGO} alt="Club Natación Lo Prado" /></div>
         <div className="nav-group-label">Programa</div>
         {NAV.map(n => (
           <button key={n.id} className={`nav-item ${route === n.id ? 'active' : ''}`} onClick={() => go(n.id)}>

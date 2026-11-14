@@ -376,7 +376,7 @@ export function seed() {
   const evaluations = [
     {
       id: uid(), fecha: iso(dOff(-18)), protocolo: 'libre', metrica: 'cronometro',
-      swimmerIds: [darIds[0], darIds[1], darIds[3]], tecnico: 'Coach Promesas',
+      swimmerIds: [darIds[0], darIds[1], darIds[3]], tecnico: 'Coach Lo Prado',
       notas: 'Primer control del mes. Base de referencia.',
       data: {
         [darIds[0]]: { laps: [88.4, 89.0, 88.8, 89.5, 90.2, 90.0, 90.9, 91.5, 92.3, 93.6], total: 904.2 },
@@ -386,7 +386,7 @@ export function seed() {
     },
     {
       id: uid(), fecha: iso(dOff(-10)), protocolo: 'libre', metrica: 'cronometro',
-      swimmerIds: [darIds[0], darIds[1], darIds[3]], tecnico: 'Coach Promesas',
+      swimmerIds: [darIds[0], darIds[1], darIds[3]], tecnico: 'Coach Lo Prado',
       notas: 'Mejora en el sostenimiento del ritmo respecto al control anterior.',
       data: {
         [darIds[0]]: { laps: [86.9, 87.4, 87.2, 87.8, 88.4, 88.2, 89.0, 89.6, 90.3, 91.4], total: 886.2 },
@@ -396,7 +396,7 @@ export function seed() {
     },
     {
       id: uid(), fecha: iso(dOff(-2)), protocolo: 'libre', metrica: 'cronometro',
-      swimmerIds: [darIds[0], darIds[1]], tecnico: 'Coach Promesas',
+      swimmerIds: [darIds[0], darIds[1]], tecnico: 'Coach Lo Prado',
       notas: 'Buen control de ritmo en repeticiones 1-6, leve caída al final.',
       data: {
         [darIds[0]]: { laps: [85.2, 86.1, 85.9, 86.4, 87.0, 86.8, 87.5, 88.1, 88.9, 90.2], total: 872.1 },
@@ -405,13 +405,13 @@ export function seed() {
     },
     {
       id: uid(), fecha: iso(dOff(-2)), protocolo: 'libre', metrica: 'brazadas',
-      swimmerIds: [darIds[0], darIds[3]], tecnico: 'Coach Promesas',
+      swimmerIds: [darIds[0], darIds[3]], tecnico: 'Coach Lo Prado',
       notas: 'Mantiene 16-17 brazadas por tramo de 50, objetivo bajar a 15.',
       data: { [darIds[0]]: { tramos: [16, 16, 17, 16, 17, 17, 18, 17, 18, 19] }, [darIds[3]]: { tramos: [15, 15, 16, 15, 16, 16, 16, 17, 17, 18] } },
     },
     {
       id: uid(), fecha: iso(dOff(-6)), protocolo: 'salida15', metrica: 'compuesta',
-      swimmerIds: [darIds[0], darIds[1], darIds[3]], tecnico: 'Coach Promesas',
+      swimmerIds: [darIds[0], darIds[1], darIds[3]], tecnico: 'Coach Lo Prado',
       notas: 'Control de salida. Trabajar la coordinación delfín-estilo.',
       data: {
         [darIds[0]]: { intentos: [{ tiempo: 7.2, subacuatico: 4, brazadas: 6 }, { tiempo: 7.0, subacuatico: 5, brazadas: 6 }] },
@@ -422,7 +422,7 @@ export function seed() {
   ];
 
   return {
-    coach: { nombre: 'Coach Promesas', rol: 'Entrenador Jefe', region: 'Los Ríos', programa: 'Promesas Chile Natación', email: 'tecnico@promesaschile.cl' },
+    coach: { nombre: 'Coach Lo Prado', rol: 'Entrenador Jefe', region: 'Metropolitana', programa: 'Club Natación Lo Prado', email: 'tecnico@ejemplo.cl' },
     swimmers, trainings, attendance, evaluations,
     bajas: [],
     reports: {},
@@ -431,7 +431,7 @@ export function seed() {
 
 export function emptyState() {
   return {
-    coach: { nombre: '', rol: 'Entrenador', region: '', programa: 'Promesas Chile Natación', email: '' },
+    coach: { nombre: '', rol: 'Entrenador', region: '', programa: 'Club Natación Lo Prado', email: '' },
     swimmers: [], trainings: [], attendance: {}, evaluations: [], bajas: [], reports: {},
     goldTimes: {},
   };

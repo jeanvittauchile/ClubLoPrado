@@ -36,9 +36,9 @@ function SwimmerGroupReport({ st, list, group }) {
       <div className="report-page">
         <div className="rp-header">
           <div className="rp-brand">
-            <img src={logoUrl} alt="Promesas Chile" />
+            <img src={logoUrl} alt="Club Natación Lo Prado" />
             <div>
-              <div className="rp-program">Promesas Chile · Natación</div>
+              <div className="rp-program">Club Natación Lo Prado</div>
               <div className="rp-doctype">{doctype}</div>
             </div>
           </div>
@@ -147,7 +147,7 @@ function SwimmerGroupReport({ st, list, group }) {
       {/* ══════════════ PÁGINA 2: Datos de contacto ══════════════ */}
       <div className="report-page">
         <div className="rp-cont-header">
-          <span className="rp-cont-title">Promesas Chile · Natación — {doctype}</span>
+          <span className="rp-cont-title">Club Natación Lo Prado — {doctype}</span>
           <span className="rp-cont-meta">{fmtDate(todayISO())}</span>
         </div>
 
