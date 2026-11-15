@@ -190,13 +190,84 @@ function subscribeRealtime() {
   channel.subscribe();
 }
 
+/* ---------- migración de datos guardados sólo en este navegador ----------
+   Versiones anteriores podían funcionar en "modo local" (sin cuenta) o con
+   una sesión anónima; esos datos quedaron en localStorage bajo otra clave.
+   Al iniciar sesión con una cuenta real se suben a la nube (una vez confirmada
+   la subida, la copia local se archiva).
+   La copia original se conserva renombrada como respaldo. */
+const LEGACY_DONE_PREFIX = 'pcn_legacy_migrated_v1:';
+
+function migrateLegacyCaches() {
+  // Sólo el caché del "modo local" (sin cuenta). Los cachés de otras cuentas
+  // reales en este dispositivo no se tocan.
+  const k = cacheKey(null); // 'pcn_cache_v1:local'
+  let old = null;
+  try { old = normalizeGroups(JSON.parse(localStorage.getItem(k) || 'null')); } catch (e) { old = null; }
+  if (!old) return 0;
+
+  // Todo se vuelve a enviar en cada intento (upsert = sin duplicados) hasta
+  // confirmar que la nube lo recibió; sólo entonces se archiva la copia local.
+  let count = 0;
+  const mergeList = (key, table) => {
+    (old[key] || []).forEach(item => {
+      if (!item || !item.id) return;
+      if (!(state[key] || []).some(x => x.id === item.id)) state[key] = [...(state[key] || []), item];
+      enqueue({ type: 'upsert', table, id: item.id, doc: item });
+      count++;
+    });
+  };
+  mergeList('swimmers', 'swimmers');
+  mergeList('trainings', 'trainings');
+  mergeList('evaluations', 'evaluations');
+  mergeList('bajas', 'bajas');
+
+  Object.entries(old.attendance || {}).forEach(([sid, days]) => {
+    Object.keys(days || {}).forEach(day => {
+      if (!days[day]) return;
+      if (!state.attendance[sid]) state.attendance[sid] = {};
+      state.attendance[sid][day] = true;
+      enqueue({ type: 'att-set', swimmerId: sid, day });
+    });
+  });
+  Object.entries(old.reports || {}).forEach(([ym, r]) => {
+    if (!r) return;
+    if (!state.reports[ym]) state.reports[ym] = { notas: r.notas || '', resultados: r.resultados || '' };
+    const cur = state.reports[ym];
+    enqueue({ type: 'report', ym, notas: cur.notas || '', resultados: cur.resultados || '' });
+  });
+  if (!state.coach?.nombre && old.coach?.nombre) {
+    state.coach = { ...state.coach, ...old.coach };
+    enqueue({ type: 'coach', doc: { ...state.coach, goldTimes: state.goldTimes } });
+  }
+  commit();
+  if (count) console.info(`[migración] subiendo ${count} registros guardados en este navegador`);
+
+  // Archivar la copia local cuando la cola de subida quede vacía.
+  const started = Date.now();
+  const timer = setInterval(() => {
+    if (queue.length === 0) {
+      clearInterval(timer);
+      try {
+        localStorage.setItem(LEGACY_DONE_PREFIX + k, localStorage.getItem(k) || '');
+        localStorage.removeItem(k);
+      } catch (e) { /* ignore */ }
+      console.info('[migración] datos locales subidos a la nube');
+    } else if (Date.now() - started > 120000) {
+      clearInterval(timer); // se reintentará en el próximo inicio de sesión
+    }
+  }, 1000);
+  return count;
+}
+
 /* ---------- inicialización / sesión ---------- */
 async function init(id) {
   userId = id || null;
   loadCache();
   emit();
-  if (hasSupabaseConfig && supabase && userId) {
+  if (hasSupabaseConfig && supabase && userId && userId !== 'local') {
     await hydrateFromCloud();
+    migrateLegacyCaches();
     subscribeRealtime();
     window.addEventListener('online', flush);
     flush();

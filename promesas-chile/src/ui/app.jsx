@@ -63,7 +63,7 @@ function Settings({ onClose }) {
           <div className="section-title"><h2>Cuenta</h2><div className="line" /></div>
           <p style={{ fontSize: 13, color: 'var(--slate-500)', marginTop: 0 }}>Sesión iniciada como <strong>{accountEmail}</strong></p>
           <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 14 }}>
-            <Field label="Nueva contraseña"><input className="input" type="password" autoComplete="new-password" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="Mínimo 8 caracteres" /></Field>
+            <Field label="Nueva contraseña"><PasswordInput autoComplete="new-password" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="Mínimo 8 caracteres" /></Field>
             <Button size="sm" variant="ghost" icon="lock" onClick={changePassword}>Cambiar contraseña</Button>
           </div>
           <Button size="sm" variant="ghost" icon="logout" onClick={() => { onClose(); supabase.auth.signOut(); }}>Cerrar sesión</Button>
@@ -234,6 +234,23 @@ function AuthCard({ title, sub, children }) {
   );
 }
 
+/* Campo de contraseña con botón para mostrar / ocultar */
+function PasswordInput({ value, onChange, autoComplete = 'current-password', ...rest }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div style={{ position: 'relative' }}>
+      <input className="input" type={show ? 'text' : 'password'} autoComplete={autoComplete}
+        value={value} onChange={onChange} style={{ paddingRight: 44, width: '100%' }} {...rest} />
+      <button type="button" onClick={() => setShow(s => !s)}
+        title={show ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+        aria-label={show ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+        style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', width: 34, height: 34, display: 'grid', placeItems: 'center', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--slate-500)' }}>
+        <Icon name={show ? 'eyeOff' : 'eye'} style={{ width: 18, height: 18 }} />
+      </button>
+    </div>
+  );
+}
+
 const AUTH_ERRORS = {
   'Invalid login credentials': 'Correo o contraseña incorrectos.',
   'Email not confirmed': 'Debes confirmar tu correo antes de entrar.',
@@ -265,7 +282,7 @@ function Login() {
     <AuthCard title="Club Natación Lo Prado" sub="Ingresa con tu cuenta de entrenador">
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <Field label="Correo"><input className="input" type="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} required /></Field>
-        <Field label="Contraseña"><input className="input" type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} required /></Field>
+        <Field label="Contraseña"><PasswordInput value={password} onChange={e => setPassword(e.target.value)} required /></Field>
         {msg && <div style={{ fontSize: 13, color: msg.type === 'error' ? 'var(--red)' : 'var(--green)' }}>{msg.text}</div>}
         <Button type="submit" disabled={busy}>{busy ? 'Ingresando…' : 'Entrar'}</Button>
         <button type="button" onClick={forgot} disabled={busy} style={{ background: 'none', border: 'none', color: 'var(--cyan-700)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
@@ -293,8 +310,8 @@ function SetPassword({ onDone }) {
   return (
     <AuthCard title="Crea tu contraseña" sub="La usarás para entrar a la plataforma">
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <Field label="Nueva contraseña"><input className="input" type="password" autoComplete="new-password" value={p1} onChange={e => setP1(e.target.value)} required /></Field>
-        <Field label="Repite la contraseña"><input className="input" type="password" autoComplete="new-password" value={p2} onChange={e => setP2(e.target.value)} required /></Field>
+        <Field label="Nueva contraseña"><PasswordInput autoComplete="new-password" value={p1} onChange={e => setP1(e.target.value)} required /></Field>
+        <Field label="Repite la contraseña"><PasswordInput autoComplete="new-password" value={p2} onChange={e => setP2(e.target.value)} required /></Field>
         {err && <div style={{ fontSize: 13, color: 'var(--red)' }}>{err}</div>}
         <Button type="submit" disabled={busy}>{busy ? 'Guardando…' : 'Guardar y entrar'}</Button>
       </form>
