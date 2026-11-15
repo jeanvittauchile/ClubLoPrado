@@ -250,8 +250,13 @@ export const DB = {
     enqueue({ type: 'upsert', table: 'swimmers', id: s.id, doc: s });
   },
   updateSwimmer(id, patch) {
-    const s = state.swimmers.find(x => x.id === id);
-    if (s) { Object.assign(s, patch); commit(); enqueue({ type: 'upsert', table: 'swimmers', id, doc: s }); }
+    const prev = state.swimmers.find(x => x.id === id);
+    if (!prev) return;
+    const s = { ...prev, ...patch };
+    // nueva referencia de arreglo para que las vistas memorizadas se recalculen
+    state.swimmers = state.swimmers.map(x => (x.id === id ? s : x));
+    commit();
+    enqueue({ type: 'upsert', table: 'swimmers', id, doc: s });
   },
   removeSwimmer(id, justificacion) {
     const s = state.swimmers.find(x => x.id === id);

@@ -19,7 +19,7 @@ const SW_EMPTY = {
 };
 
 function SwimmerForm({ initial, group, onSave, onClose }) {
-  const [f, setF] = useState({ ...SW_EMPTY, ...initial });
+  const [f, setF] = useState({ ...SW_EMPTY, group, ...initial });
   const set = (k) => (e) => setF(s => ({ ...s, [k]: e.target.value }));
   const cat = DB.categoryFor(f.fechaNacimiento);
   const age = DB.ageFor(f.fechaNacimiento);
@@ -27,7 +27,7 @@ function SwimmerForm({ initial, group, onSave, onClose }) {
   return (
     <Modal
       title={initial ? 'Editar nadador' : 'Nuevo nadador'}
-      sub={DB.groupLabel(group)}
+      sub={DB.groupLabel(f.group)}
       onClose={onClose}
       foot={<>
         <Button variant="ghost" onClick={onClose}>Cancelar</Button>
@@ -35,9 +35,14 @@ function SwimmerForm({ initial, group, onSave, onClose }) {
       </>}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div className="field-grid">
+        <div className="field-grid-3">
           <Field label="Nombre completo" req><input className="input" value={f.nombre} onChange={set('nombre')} placeholder="Nombre y apellidos" /></Field>
           <Field label="RUT"><input className="input" value={f.rut} onChange={set('rut')} placeholder="12.345.678-9" /></Field>
+          <Field label="Grupo">
+            <select className="select" value={f.group} onChange={set('group')}>
+              {DB.GROUPS.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
+            </select>
+          </Field>
         </div>
         <div className="field-grid-3">
           <Field label="Fecha de nacimiento"><input type="date" className="input" value={f.fechaNacimiento} onChange={set('fechaNacimiento')} /></Field>
@@ -307,8 +312,16 @@ function SwimmersView() {
   }), [st.swimmers]);
 
   const save = (data) => {
-    if (editing && editing !== 'new') { DB.updateSwimmer(editing.id, data); toast('Nadador actualizado'); }
-    else { DB.addSwimmer({ ...data, group }); toast('Nadador agregado'); }
+    if (editing && editing !== 'new') {
+      DB.updateSwimmer(editing.id, data);
+      toast(data.group !== editing.group ? `Nadador movido a ${DB.groupLabel(data.group)}` : 'Nadador actualizado');
+    }
+    else { DB.addSwimmer({ group, ...data }); toast('Nadador agregado'); }
+  };
+  const moveGroup = (s) => {
+    const to = s.group === 'G1' ? 'G2' : 'G1';
+    DB.updateSwimmer(s.id, { group: to });
+    toast(`${s.nombre} movido a ${DB.groupLabel(to)}`);
   };
 
   if (showReport) {
@@ -388,6 +401,7 @@ function SwimmersView() {
                   <td>{s.tutor || '—'}</td>
                   <td onClick={e => e.stopPropagation()}>
                     <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                      <button className="btn-icon" title={`Mover a ${DB.groupLabel(s.group === 'G1' ? 'G2' : 'G1')}`} onClick={() => moveGroup(s)}><Icon name="swap" /></button>
                       <button className="btn-icon" title="Editar" onClick={() => setEditing(s)}><Icon name="edit" /></button>
                       <button className="btn-icon" title="Eliminar" onClick={() => setRemoving(s)}><Icon name="trash" /></button>
                     </div>
