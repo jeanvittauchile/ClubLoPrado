@@ -17,6 +17,12 @@ import { GoldTimesView } from './goldtimes.jsx';
 
 const LOGO = '/logo.png';
 
+// Cierra sesión; si el servidor lo rechaza (p. ej. cuenta eliminada), al menos la cierra en este dispositivo.
+const signOutSafe = async () => {
+  const { error } = await supabase.auth.signOut();
+  if (error) await supabase.auth.signOut({ scope: 'local' });
+};
+
 
 /* ============================================================
    Ajustes
@@ -66,7 +72,7 @@ function Settings({ onClose }) {
             <Field label="Nueva contraseña"><PasswordInput autoComplete="new-password" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="Mínimo 8 caracteres" /></Field>
             <Button size="sm" variant="ghost" icon="lock" onClick={changePassword}>Cambiar contraseña</Button>
           </div>
-          <Button size="sm" variant="ghost" icon="logout" onClick={() => { onClose(); supabase.auth.signOut(); }}>Cerrar sesión</Button>
+          <Button size="sm" variant="ghost" icon="logout" onClick={() => { onClose(); signOutSafe(); }}>Cerrar sesión</Button>
         </>
       )}
 
@@ -327,7 +333,7 @@ function NotMember({ email, detail }) {
         Pide al administrador que agregue tu correo a la lista de entrenadores.
       </p>
       {detail && <p style={{ fontSize: 12, color: 'var(--slate-400)' }}>Detalle: {detail}</p>}
-      <Button variant="ghost" onClick={() => supabase.auth.signOut()}>Cerrar sesión</Button>
+      <Button variant="ghost" onClick={signOutSafe}>Cerrar sesión</Button>
     </AuthCard>
   );
 }

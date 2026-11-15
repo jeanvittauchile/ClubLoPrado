@@ -64,35 +64,47 @@ async function flush() {
   }
 }
 
+/* Registra el error de Supabase. Si la sesión pertenece a una cuenta que ya
+   no existe (FK owner → auth.users), se cierra la sesión para volver a entrar. */
+function check(error, op) {
+  if (!error) return true;
+  console.warn('[sync] Supabase rechazó la operación, se reintentará:', op.type, op.table || '', error.code, error.message);
+  if (error.code === '23503' && /owner_fkey/.test(error.message || '')) {
+    console.warn('[sync] la sesión es de una cuenta eliminada; cerrando sesión');
+    supabase.auth.signOut({ scope: 'local' });
+  }
+  return false;
+}
+
 async function runOp(op) {
   try {
     if (op.type === 'upsert') {
       const { error } = await supabase.from(op.table).upsert({ id: op.id, owner: userId, doc: op.doc });
-      return !error;
+      return check(error, op);
     }
     if (op.type === 'delete') {
       const { error } = await supabase.from(op.table).delete().eq('id', op.id);
-      return !error;
+      return check(error, op);
     }
     if (op.type === 'coach') {
       const { error } = await supabase.from('coach').upsert({ owner: userId, doc: op.doc });
-      return !error;
+      return check(error, op);
     }
     if (op.type === 'att-set') {
       const { error } = await supabase.from('attendance').upsert({ owner: userId, swimmer_id: op.swimmerId, day: op.day });
-      return !error;
+      return check(error, op);
     }
     if (op.type === 'att-del') {
       const { error } = await supabase.from('attendance').delete().eq('swimmer_id', op.swimmerId).eq('day', op.day);
-      return !error;
+      return check(error, op);
     }
     if (op.type === 'att-del-swimmer') {
       const { error } = await supabase.from('attendance').delete().eq('swimmer_id', op.swimmerId);
-      return !error;
+      return check(error, op);
     }
     if (op.type === 'report') {
       const { error } = await supabase.from('reports').upsert({ owner: userId, ym: op.ym, notas: op.notas, resultados: op.resultados });
-      return !error;
+      return check(error, op);
     }
     if (op.type === 'wipe') {
       for (const t of ['swimmers', 'trainings', 'evaluations', 'bajas']) {
