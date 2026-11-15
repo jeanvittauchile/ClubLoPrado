@@ -59,7 +59,7 @@ function VolumeEditor({ contenido, value, onChange }) {
         </div>
         {manual && <button type="button" className="link-btn" onClick={() => onChange(null)} style={{ fontSize: 12, fontWeight: 600, color: 'var(--cyan-700)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>↺ Recalcular desde el contenido</button>}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
+      <div className="m-3col" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
         {VOL_META.map(m => (
           <div key={m.k} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', padding: '8px 8px 9px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 5 }}>

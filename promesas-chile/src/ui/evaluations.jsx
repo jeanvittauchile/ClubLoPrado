@@ -222,7 +222,7 @@ function EvalSetup({ onStart, onCancel }) {
   return (
     <div style={{ maxWidth: 860 }}>
       <div className="section-title" style={{ marginTop: 0 }}><h2>1 · Protocolo de evaluación</h2><div className="line" /></div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+      <div className="m-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
         {DB.PROTOCOLS.map(p => (
           <button key={p.id} className="proto-pick" data-on={protocolo === p.id} onClick={() => setProtocolo(p.id)}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
@@ -246,7 +246,7 @@ function EvalSetup({ onStart, onCancel }) {
       {proto && proto.niveles && (
         <div className="card card-pad" style={{ marginBottom: 28, background: 'var(--surface-2)' }}>
           <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--slate-400)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 12 }}>Sistema de niveles · {proto.nombre}</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 6 }}>
+          <div className="m-5col" style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 6 }}>
             {proto.niveles.map((t, i) => {
               const nv = i + 1;
               const nc = nv <= 2 ? '#C6962B' : nv <= 4 ? '#1FA971' : nv <= 6 ? '#00A6C6' : nv <= 8 ? '#E0A93B' : '#E1543B';
@@ -279,7 +279,7 @@ function EvalSetup({ onStart, onCancel }) {
       ) : (
         <>
           <p style={{ marginTop: -8, marginBottom: 16, color: 'var(--slate-500)', fontSize: 13.5 }}>Cada métrica se registra de forma independiente, en momentos distintos de la sesión.</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 28 }}>
+          <div className="m-stack" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 14, marginBottom: 28 }}>
             {['cronometro', 'brazadas', 'subacuatico'].map(k => {
               const m = DB.METRIC_TYPES[k];
               return (
@@ -296,7 +296,7 @@ function EvalSetup({ onStart, onCancel }) {
           {metrica === 'cronometro' && (
             <div style={{ marginBottom: 28 }}>
               <div className="section-title"><h2>Modo de cronometraje</h2><div className="line" /></div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <div className="m-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                 <button className="metric-pick" data-on={cronoMode === 'individual'} onClick={() => setCronoMode('individual')}>
                   <span className="mp-ico" style={{ background: '#00C0E21a', color: '#00A6C6' }}><Icon name="user" /></span>
                   <span className="mp-label">Individual</span>
@@ -1469,7 +1469,7 @@ function ManualEvalForm({ onSave, onCancel }) {
       </div>
 
       <div className="section-title" style={{ marginTop: 0 }}><h2>1 · Protocolo y fecha</h2><div className="line" /></div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 220px', gap: 14, marginBottom: 14, alignItems: 'start' }}>
+      <div className="m-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 220px', gap: 14, marginBottom: 14, alignItems: 'start' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           {DB.PROTOCOLS.map(p => (
             <button key={p.id} className="proto-pick" data-on={protocolo === p.id} onClick={() => setProtocolo(p.id)}>

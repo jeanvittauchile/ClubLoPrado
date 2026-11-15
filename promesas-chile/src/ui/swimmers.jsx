@@ -129,7 +129,7 @@ function SwimmerDetail({ swimmer, onClose, onEdit }) {
           {pct != null && <span className="badge" style={{ background: pctColor + '1a', color: pctColor, border: `1px solid ${pctColor}40` }}>{pct}% del oro sudamericano</span>}
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+      <div className="m-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
         {rows.map(([ic, label, val], i) => (
           <div key={i} style={{ display: 'flex', gap: 11, alignItems: 'flex-start' }}>
             <div className="ico" style={{ width: 32, height: 32, borderRadius: 9, background: 'var(--line-soft)', color: 'var(--slate-500)', display: 'grid', placeItems: 'center', flex: '0 0 32px' }}>
