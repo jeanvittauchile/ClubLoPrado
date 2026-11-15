@@ -23,27 +23,10 @@ function ReportsView() {
 
   const nadadores = useMemo(() => st.swimmers.slice().sort((a, b) => a.nombre.localeCompare(b.nombre)), [st.swimmers]);
 
-  const trainingDays = useMemo(() => {
-    const set = new Set();
-    st.trainings.forEach(t => { if (t.fecha.startsWith(ym)) set.add(t.fecha); });
-    return [...set];
-  }, [st.trainings, ym]);
-
-  const activeDays = useMemo(() => {
-    const set = new Set(trainingDays.map(d => +d.slice(8)));
-    nadadores.forEach(s => { const a = st.attendance[s.id] || {}; Object.keys(a).forEach(k => { if (k.startsWith(ym) && a[k]) set.add(+k.slice(8)); }); });
-    return [...set].sort((a, b) => a - b);
-  }, [trainingDays, nadadores, st.attendance, ym]);
-
-  const attRows = nadadores.map(s => {
-    const a = st.attendance[s.id] || {};
-    const present = activeDays.filter(d => a[`${ym}-${String(d).padStart(2, '0')}`]).length;
-    const pct = activeDays.length ? Math.round((present / activeDays.length) * 100) : 0;
-    return { s, present, pct };
-  });
-  const totalPresent = attRows.reduce((n, r) => n + r.present, 0);
-  const possible = activeDays.length * nadadores.length;
-  const globalPct = possible ? Math.round((totalPresent / possible) * 100) : 0;
+  // Asistencia por actividad
+  const statsN = DB.monthAttendance(st, nadadores, ym, 'natacion');
+  const statsF = DB.monthAttendance(st, nadadores, ym, 'fisica');
+  const activeDaysCount = new Set([...statsN.activeDays, ...statsF.activeDays]).size;
 
   const monthEvals = st.evaluations.filter(e => e.fecha.startsWith(ym)).sort((a, b) => a.fecha.localeCompare(b.fecha));
   const monthTrainings = st.trainings.filter(t => t.fecha.startsWith(ym)).sort((a, b) => a.fecha.localeCompare(b.fecha));
@@ -86,7 +69,7 @@ function ReportsView() {
           </div>
 
           <div style={{ overflowX: 'auto' }}>
-            <ReportPaper {...{ st, ym, yy, mm, nadadores, activeDays, attRows, totalPresent, possible, globalPct, monthEvals, monthTrainings, meta, logoUrl, protoById, metricMeta }} />
+            <ReportPaper {...{ st, ym, yy, mm, nadadores, statsN, statsF, activeDaysCount, monthEvals, monthTrainings, meta, logoUrl, protoById, metricMeta }} />
           </div>
         </div>
       )}
@@ -95,7 +78,7 @@ function ReportsView() {
 }
 
 /* ── ReportPaper: 2 páginas A4 ── */
-function ReportPaper({ st, ym, yy, mm, nadadores, activeDays, attRows, totalPresent, possible, globalPct, monthEvals, monthTrainings, meta, logoUrl, protoById, metricMeta }) {
+function ReportPaper({ st, ym, yy, mm, nadadores, statsN, statsF, activeDaysCount, monthEvals, monthTrainings, meta, logoUrl, protoById, metricMeta }) {
   const coach = st.coach;
   const VOLM = [
     { k: 'total', label: 'Total', color: 'var(--navy)' },
@@ -151,16 +134,16 @@ function ReportPaper({ st, ym, yy, mm, nadadores, activeDays, attRows, totalPres
               <div className="rp-stat-l">Entrenamientos</div>
             </div>
             <div className="rp-stat">
-              <div className="rp-stat-v">{activeDays.length}</div>
+              <div className="rp-stat-v">{activeDaysCount}</div>
               <div className="rp-stat-l">Días de actividad</div>
             </div>
-            <div className="rp-stat">
-              <div className="rp-stat-v">{totalPresent}</div>
-              <div className="rp-stat-l">Asistencias totales</div>
+            <div className="rp-stat rp-stat-hl">
+              <div className="rp-stat-v">{statsN.pct}%</div>
+              <div className="rp-stat-l">Asistencia natación ({statsN.present})</div>
             </div>
             <div className="rp-stat rp-stat-hl">
-              <div className="rp-stat-v">{globalPct}%</div>
-              <div className="rp-stat-l">Tasa de asistencia</div>
+              <div className="rp-stat-v">{statsF.pct}%</div>
+              <div className="rp-stat-l">Asistencia prep. física ({statsF.present})</div>
             </div>
             <div className="rp-stat">
               <div className="rp-stat-v">{monthEvals.length}</div>
@@ -169,7 +152,7 @@ function ReportPaper({ st, ym, yy, mm, nadadores, activeDays, attRows, totalPres
           </div>
         </div>
 
-        {/* Asistencia por deportista */}
+        {/* Asistencia por deportista y actividad */}
         <div className="rp-section">
           <h2 className="rp-h">Asistencia de deportistas</h2>
           <table className="rp-table">
@@ -177,28 +160,28 @@ function ReportPaper({ st, ym, yy, mm, nadadores, activeDays, attRows, totalPres
               <tr>
                 <th>Nadador</th>
                 <th>Categoría</th>
-                <th className="num">Asistencias</th>
-                <th className="num">Posibles</th>
+                <th className="num">Natación</th>
                 <th className="num">%</th>
-                <th>Cumplimiento</th>
+                <th className="num">Prep. física</th>
+                <th className="num">%</th>
               </tr>
             </thead>
             <tbody>
-              {attRows.map(({ s, present, pct }) => (
-                <tr key={s.id}>
-                  <td className="strong">{s.nombre}</td>
-                  <td>{DB.categoryFor(s.fechaNacimiento)}</td>
-                  <td className="num">{present}</td>
-                  <td className="num">{activeDays.length}</td>
-                  <td className="num strong">{pct}%</td>
-                  <td>
-                    <div className="rp-bar">
-                      <div className="rp-bar-fill" style={{ width: pct + '%', background: pct >= 80 ? '#1FA971' : pct >= 60 ? '#E0A93B' : '#E1543B' }} />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {attRows.length === 0 && (
+              {statsN.rows.map(({ s, present, pct }, i) => {
+                const f = statsF.rows[i];
+                const color = (p) => (p >= 80 ? '#1FA971' : p >= 60 ? '#E0A93B' : '#E1543B');
+                return (
+                  <tr key={s.id}>
+                    <td className="strong">{s.nombre}</td>
+                    <td>{DB.categoryFor(s.fechaNacimiento)}</td>
+                    <td className="num">{present}/{statsN.activeDays.length}</td>
+                    <td className="num strong" style={{ color: statsN.activeDays.length ? color(pct) : undefined }}>{statsN.activeDays.length ? `${pct}%` : '—'}</td>
+                    <td className="num">{f.present}/{statsF.activeDays.length}</td>
+                    <td className="num strong" style={{ color: statsF.activeDays.length ? color(f.pct) : undefined }}>{statsF.activeDays.length ? `${f.pct}%` : '—'}</td>
+                  </tr>
+                );
+              })}
+              {statsN.rows.length === 0 && (
                 <tr>
                   <td colSpan={6} style={{ textAlign: 'center', color: '#8A99A6', padding: '20px 10px' }}>Sin nadadores registrados.</td>
                 </tr>
@@ -206,11 +189,11 @@ function ReportPaper({ st, ym, yy, mm, nadadores, activeDays, attRows, totalPres
             </tbody>
             <tfoot>
               <tr>
-                <td className="strong" colSpan={2}>Consolidado del grupo</td>
-                <td className="num strong">{totalPresent}</td>
-                <td className="num">{possible}</td>
-                <td className="num strong">{globalPct}%</td>
-                <td />
+                <td className="strong" colSpan={2}>Consolidado</td>
+                <td className="num strong">{statsN.present}/{statsN.possible}</td>
+                <td className="num strong">{statsN.pct}%</td>
+                <td className="num strong">{statsF.present}/{statsF.possible}</td>
+                <td className="num strong">{statsF.pct}%</td>
               </tr>
             </tfoot>
           </table>

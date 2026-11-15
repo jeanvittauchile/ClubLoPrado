@@ -18,6 +18,7 @@ import {
   PRUEBAS, EVENT_KEY, GOLD_CATS, DEFAULT_GOLD_TIMES,
   parseSwimTime, goldTimeFor as _goldTimeFor, proximityPct,
   emptyState, seed, GROUPS, groupLabel, normalizeGroup, normalizeGroups,
+  ACTIVIDADES, actividadOf, actividadLabel, attMap, monthAttendance,
 } from './domain.js';
 
 const cacheKey = (userId) => `pcn_cache_v1:${userId || 'local'}`;
@@ -91,11 +92,11 @@ async function runOp(op) {
       return check(error, op);
     }
     if (op.type === 'att-set') {
-      const { error } = await supabase.from('attendance').upsert({ owner: userId, swimmer_id: op.swimmerId, day: op.day });
+      const { error } = await supabase.from('attendance').upsert({ owner: userId, swimmer_id: op.swimmerId, day: op.day, actividad: op.act || 'natacion' });
       return check(error, op);
     }
     if (op.type === 'att-del') {
-      const { error } = await supabase.from('attendance').delete().eq('swimmer_id', op.swimmerId).eq('day', op.day);
+      const { error } = await supabase.from('attendance').delete().eq('swimmer_id', op.swimmerId).eq('day', op.day).eq('actividad', op.act || 'natacion');
       return check(error, op);
     }
     if (op.type === 'att-del-swimmer') {
@@ -130,7 +131,7 @@ async function hydrateFromCloud() {
       supabase.from('trainings').select('doc'),
       supabase.from('evaluations').select('doc'),
       supabase.from('bajas').select('doc'),
-      supabase.from('attendance').select('swimmer_id, day'),
+      supabase.from('attendance').select('swimmer_id, day, actividad'),
       supabase.from('reports').select('ym, notas, resultados'),
       supabase.from('coach').select('doc').eq('owner', userId).maybeSingle(),
     ]);
@@ -148,11 +149,14 @@ async function hydrateFromCloud() {
     next.bajas = (bj.data || []).map(r => r.doc);
 
     const attendance = {};
+    const attendancePF = {};
     (att.data || []).forEach(r => {
       const day = typeof r.day === 'string' ? r.day.slice(0, 10) : r.day;
-      (attendance[r.swimmer_id] = attendance[r.swimmer_id] || {})[day] = true;
+      const target = r.actividad === 'fisica' ? attendancePF : attendance;
+      (target[r.swimmer_id] = target[r.swimmer_id] || {})[day] = true;
     });
     next.attendance = attendance;
+    next.attendancePF = attendancePF;
 
     const reports = {};
     (rep.data || []).forEach(r => { reports[r.ym] = { notas: r.notas || '', resultados: r.resultados || '' }; });
@@ -300,6 +304,7 @@ function teardown() {
 /* ---------- API pública (idéntica al prototipo) ---------- */
 export const DB = {
   PROTOCOLS, METRIC_TYPES, CAT_BY_YEAR, PRUEBAS, EVENT_KEY, GOLD_CATS, DEFAULT_GOLD_TIMES, GROUPS, groupLabel, normalizeGroup,
+  ACTIVIDADES, actividadOf, actividadLabel, attMap, monthAttendance,
   categoryFor, ageFor, levelFor, parseVolume, volumenFor, uid, parseSwimTime, proximityPct,
   goldTimeFor(prueba, genero, fechaNac) { return _goldTimeFor(prueba, genero, fechaNac, state.goldTimes); },
   updateGoldTime(cat, genero, key, time) {
@@ -351,6 +356,7 @@ export const DB = {
       state.bajas.push(baja);
       state.swimmers = state.swimmers.filter(x => x.id !== id);
       delete state.attendance[id];
+      if (state.attendancePF) delete state.attendancePF[id];
       commit();
       enqueue({ type: 'upsert', table: 'bajas', id: baja.id, doc: baja });
       enqueue({ type: 'delete', table: 'swimmers', id });
@@ -376,16 +382,28 @@ export const DB = {
   },
 
   // Asistencia
-  toggleAttendance(swimmerId, day) {
-    if (!state.attendance[swimmerId]) state.attendance[swimmerId] = {};
-    const cur = state.attendance[swimmerId][day];
-    if (cur) { delete state.attendance[swimmerId][day]; commit(); enqueue({ type: 'att-del', swimmerId, day }); }
-    else { state.attendance[swimmerId][day] = true; commit(); enqueue({ type: 'att-set', swimmerId, day }); }
+  // act: 'natacion' (por defecto) | 'fisica'
+  toggleAttendance(swimmerId, day, act = 'natacion') {
+    const key = act === 'fisica' ? 'attendancePF' : 'attendance';
+    // nuevas referencias para que las vistas memorizadas se recalculen
+    const map = { ...(state[key] || {}) };
+    const days = { ...(map[swimmerId] || {}) };
+    const on = !days[day];
+    if (on) days[day] = true; else delete days[day];
+    map[swimmerId] = days;
+    state[key] = map;
+    commit();
+    enqueue({ type: on ? 'att-set' : 'att-del', swimmerId, day, act });
   },
-  setAttendance(swimmerId, day, val) {
-    if (!state.attendance[swimmerId]) state.attendance[swimmerId] = {};
-    if (val) { state.attendance[swimmerId][day] = true; commit(); enqueue({ type: 'att-set', swimmerId, day }); }
-    else { delete state.attendance[swimmerId][day]; commit(); enqueue({ type: 'att-del', swimmerId, day }); }
+  setAttendance(swimmerId, day, val, act = 'natacion') {
+    const key = act === 'fisica' ? 'attendancePF' : 'attendance';
+    const map = { ...(state[key] || {}) };
+    const days = { ...(map[swimmerId] || {}) };
+    if (val) days[day] = true; else delete days[day];
+    map[swimmerId] = days;
+    state[key] = map;
+    commit();
+    enqueue({ type: val ? 'att-set' : 'att-del', swimmerId, day, act });
   },
 
   // Evaluaciones

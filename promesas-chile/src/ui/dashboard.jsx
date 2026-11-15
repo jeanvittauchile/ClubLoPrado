@@ -21,7 +21,8 @@ function Dashboard({ go }) {
   const todayTrainings = st.trainings.filter(t => t.fecha === today).sort((a, b) => a.titulo.localeCompare(b.titulo));
 
   // asistencia de hoy: sólo los grupos que entrenan hoy (sin entrenamiento → todos)
-  const isPresent = (s) => !!(st.attendance[s.id] && st.attendance[s.id][today]);
+  const isPresentIn = (s, act) => { const m = DB.attMap(st, act); return !!(m[s.id] && m[s.id][today]); };
+  const isPresent = (s) => isPresentIn(s, 'natacion') || isPresentIn(s, 'fisica');
   const groupsToday = new Set(todayTrainings.map(t => t.grupo));
   const allToday = groupsToday.size === 0 || groupsToday.has('TODOS');
   const todayList = nadadores
@@ -33,13 +34,11 @@ function Dashboard({ go }) {
     : `Entrena hoy: ${[...groupsToday].sort().map(g => DB.groupLabel(g)).join(' y ')}`;
   const presentToday = todayList.filter(isPresent).length;
 
-  // month attendance rate
-  const activeDays = new Set();
-  st.trainings.forEach(t => { if (t.fecha.startsWith(ym)) activeDays.add(t.fecha.slice(8)); });
-  nadadores.forEach(s => { const a = st.attendance[s.id] || {}; Object.keys(a).forEach(k => { if (k.startsWith(ym) && a[k]) activeDays.add(k.slice(8)); }); });
-  let pres = 0; nadadores.forEach(s => { const a = st.attendance[s.id] || {}; Object.keys(a).forEach(k => { if (k.startsWith(ym) && a[k]) pres++; }); });
-  const possible = activeDays.size * nadadores.length;
-  const pct = possible ? Math.round((pres / possible) * 100) : 0;
+  // tasa de asistencia del mes por actividad
+  const statsN = DB.monthAttendance(st, nadadores, ym, 'natacion');
+  const statsF = DB.monthAttendance(st, nadadores, ym, 'fisica');
+  const presN = todayList.filter(s => isPresentIn(s, 'natacion')).length;
+  const presF = todayList.filter(s => isPresentIn(s, 'fisica')).length;
 
   const monthEvals = st.evaluations.filter(e => e.fecha.startsWith(ym));
   const recentEvals = st.evaluations.slice().sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 4);
@@ -50,9 +49,9 @@ function Dashboard({ go }) {
 
   const stats = [
     { label: 'Nadadores', value: nadadores.length, icon: 'users', bg: 'var(--cyan-050)', fg: 'var(--cyan-700)', sub: `${g1.length} Grupo 1 · ${g2.length} Grupo 2` },
-    { label: 'Asistencia del mes', value: pct + '%', icon: 'trend', bg: 'var(--green-bg)', fg: 'var(--green)', sub: `${pres} asistencias` },
-    { label: 'Evaluaciones del mes', value: monthEvals.length, icon: 'award', bg: '#efeafb', fg: '#7B5BD6', sub: `${st.evaluations.length} en total` },
-    { label: 'Presentes hoy', value: `${presentToday}/${todayList.length}`, icon: 'checkSquare', bg: 'var(--amber-bg)', fg: 'var(--amber)', sub: fmtDate(today) },
+    { label: 'Asistencia del mes · Natación', value: statsN.pct + '%', icon: 'wave', bg: 'var(--green-bg)', fg: 'var(--green)', sub: `${statsN.present} asistencias` },
+    { label: 'Asistencia del mes · P. física', value: statsF.pct + '%', icon: 'trend', bg: '#efeafb', fg: '#7B5BD6', sub: `${statsF.present} asistencias` },
+    { label: 'Presentes hoy', value: `${presentToday}/${todayList.length}`, icon: 'checkSquare', bg: 'var(--amber-bg)', fg: 'var(--amber)', sub: `Natación ${presN} · P. física ${presF}` },
   ];
 
   return (
@@ -82,6 +81,7 @@ function Dashboard({ go }) {
               ) : todayTrainings.map(t => (
                 <div key={t.id} style={{ marginBottom: 14 }}>
                   <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                    <span className={`badge ${DB.actividadOf(t) === 'fisica' ? 'badge-navy' : 'badge-cyan'}`}>{DB.actividadLabel(DB.actividadOf(t))}</span>
                     <span className={`badge badge-${TR_TYPE_COLOR[t.tipo] || 'cyan'}`}>{t.tipo}</span>
                     <span className="badge badge-slate">{DB.groupLabel(t.grupo)}</span>
                     <span className="badge badge-slate">{t.duracion} min</span>
@@ -97,20 +97,30 @@ function Dashboard({ go }) {
           <div className="card" style={{ marginTop: 22 }}>
             <div className="card-head">
               <div className="ico"><Icon name="checkSquare" /></div>
-              <div style={{ flex: 1 }}><h3>Asistencia de hoy</h3><div style={{ fontSize: 12.5, color: 'var(--slate-500)' }}>{todayLabel} — toca para registrar</div></div>
+              <div style={{ flex: 1 }}><h3>Asistencia de hoy</h3><div style={{ fontSize: 12.5, color: 'var(--slate-500)' }}>{todayLabel} — marca natación, preparación física o ambas</div></div>
               <Button variant="ghost" size="sm" onClick={() => go('attendance')}>Panel mensual</Button>
             </div>
             <div className="card-pad" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {todayList.map(s => {
                 const on = isPresent(s);
                 return (
-                  <div key={s.id} className="quick-att" data-on={!!on} onClick={() => DB.toggleAttendance(s.id, today)}>
+                  <div key={s.id} className="quick-att" data-on={!!on} style={{ cursor: 'default' }}>
                     <Avatar name={s.nombre} size={32} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: 13.5, color: 'var(--ink)' }}>{s.nombre}</div>
                       <div style={{ fontSize: 11.5, color: 'var(--slate-400)' }}>{DB.categoryFor(s.fechaNacimiento)} · {DB.groupLabel(s.group)}</div>
                     </div>
-                    <div className={`att-box ${on ? 'on' : ''}`}>{on && <Icon name="check" />}</div>
+                    {DB.ACTIVIDADES.map(a => {
+                      const onA = isPresentIn(s, a.id);
+                      return (
+                        <button key={a.id} type="button" onClick={() => DB.toggleAttendance(s.id, today, a.id)}
+                          title={`${a.label}: ${onA ? 'presente' : 'ausente'}`}
+                          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px' }}>
+                          <span className={`att-box ${onA ? 'on' : ''}`}>{onA && <Icon name="check" />}</span>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--slate-400)', whiteSpace: 'nowrap' }}>{a.short}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 );
               })}

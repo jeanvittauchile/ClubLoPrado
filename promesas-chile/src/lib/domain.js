@@ -432,7 +432,7 @@ export function seed() {
 export function emptyState() {
   return {
     coach: { nombre: '', rol: 'Entrenador', region: '', programa: 'Club Natación Lo Prado', email: '' },
-    swimmers: [], trainings: [], attendance: {}, evaluations: [], bajas: [], reports: {},
+    swimmers: [], trainings: [], attendance: {}, attendancePF: {}, evaluations: [], bajas: [], reports: {},
     goldTimes: {},
   };
 }
@@ -455,5 +455,40 @@ export function normalizeGroups(st) {
   st.swimmers = (st.swimmers || []).map(s => ({ ...s, group: normalizeGroup(s.group) }));
   st.bajas = (st.bajas || []).map(b => ({ ...b, group: normalizeGroup(b.group) }));
   st.trainings = (st.trainings || []).map(t => ({ ...t, grupo: normalizeGroup(t.grupo) }));
+  st.attendance = st.attendance || {};
+  st.attendancePF = st.attendancePF || {};
   return st;
+}
+
+/* ---------- Actividades: natación y preparación física ---------- */
+export const ACTIVIDADES = [
+  { id: 'natacion', label: 'Natación', short: 'Natación' },
+  { id: 'fisica', label: 'Preparación física', short: 'P. física' },
+];
+export const actividadOf = (t) => (t && t.actividad) || 'natacion';
+export const actividadLabel = (id) => (ACTIVIDADES.find(a => a.id === id) || ACTIVIDADES[0]).label;
+/** Mapa de asistencia { swimmerId: { 'YYYY-MM-DD': true } } de una actividad. */
+export function attMap(st, act) {
+  return ((act === 'fisica' ? st.attendancePF : st.attendance) || {});
+}
+/** Estadística mensual de asistencia para una actividad. */
+export function monthAttendance(st, swimmers, ym, act) {
+  const map = attMap(st, act);
+  const days = new Set();
+  (st.trainings || []).forEach(t => {
+    if (t.fecha && t.fecha.startsWith(ym) && actividadOf(t) === act) days.add(+t.fecha.slice(8));
+  });
+  swimmers.forEach(s => {
+    const a = map[s.id] || {};
+    Object.keys(a).forEach(k => { if (k.startsWith(ym) && a[k]) days.add(+k.slice(8)); });
+  });
+  const activeDays = [...days].sort((a, b) => a - b);
+  const rows = swimmers.map(s => {
+    const a = map[s.id] || {};
+    const present = activeDays.filter(d => a[`${ym}-${String(d).padStart(2, '0')}`]).length;
+    return { s, present, pct: activeDays.length ? Math.round((present / activeDays.length) * 100) : 0 };
+  });
+  const present = rows.reduce((n, r) => n + r.present, 0);
+  const possible = activeDays.length * swimmers.length;
+  return { activeDays, rows, present, possible, pct: possible ? Math.round((present / possible) * 100) : 0 };
 }

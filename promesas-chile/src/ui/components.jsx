@@ -229,6 +229,6 @@ export function parseTime(str) {
 
 /* ---------- Helpers compartidos de dominio ---------- */
 export const TR_TYPES = ['Técnica', 'Aeróbico', 'Velocidad', 'Específico', 'Resistencia', 'Recuperación'];
-export const TR_TYPE_COLOR = { 'Técnica': 'cyan', 'Aeróbico': 'navy', 'Velocidad': 'red', 'Específico': 'amber', 'Resistencia': 'green', 'Recuperación': 'slate' };
+export const TR_TYPE_COLOR = { 'Técnica': 'cyan', 'Aeróbico': 'navy', 'Velocidad': 'red', 'Específico': 'amber', 'Resistencia': 'green', 'Recuperación': 'slate', 'Fuerza': 'red', 'Movilidad': 'green' };
 export function protoById(id) { return DB.PROTOCOLS.find(p => p.id === id); }
 export function metricMeta(m) { return DB.METRIC_TYPES[m]; }

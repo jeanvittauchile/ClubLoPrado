@@ -11,9 +11,9 @@ import {
 /* ============================================================
    trainings.jsx — Gestión de entrenamientos
    ============================================================ */
-const TR_TYPES = ['Técnica', 'Aeróbico', 'Velocidad', 'Específico', 'Resistencia', 'Recuperación'];
-const TR_TYPE_COLOR = { 'Técnica': 'cyan', 'Aeróbico': 'navy', 'Velocidad': 'red', 'Específico': 'amber', 'Resistencia': 'green', 'Recuperación': 'slate' };
-const TR_EMPTY = { fecha: '', titulo: '', grupo: 'G1', tipo: 'Técnica', duracion: 90, ubicacion: 'Piscina Municipal de Lo Prado', contenido: '' };
+const TR_TYPES = ['Técnica', 'Aeróbico', 'Velocidad', 'Específico', 'Resistencia', 'Recuperación', 'Fuerza', 'Movilidad'];
+const TR_TYPE_COLOR = { 'Técnica': 'cyan', 'Aeróbico': 'navy', 'Velocidad': 'red', 'Específico': 'amber', 'Resistencia': 'green', 'Recuperación': 'slate', 'Fuerza': 'red', 'Movilidad': 'green' };
+const TR_EMPTY = { fecha: '', titulo: '', actividad: 'natacion', grupo: 'G1', tipo: 'Técnica', duracion: 90, ubicacion: 'Piscina Municipal de Lo Prado', contenido: '' };
 
 const VOL_META = [
   { k: 'total', label: 'Total', color: 'var(--navy)' },
@@ -92,9 +92,10 @@ function TrainingForm({ initial, presetDate, onSave, onClose }) {
       </>}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <Field label="Título del entrenamiento" req><input className="input" value={f.titulo} onChange={set('titulo')} placeholder="Ej: Técnica de viraje y streamline" /></Field>
-        <div className="field-grid">
+        <div className="field-grid-3">
           <Field label="Fecha" req><input type="date" className="input" value={f.fecha} onChange={set('fecha')} /></Field>
           <Field label="Grupo"><select className="select" value={f.grupo} onChange={set('grupo')}><option value="G1">Grupo 1</option><option value="G2">Grupo 2</option><option value="TODOS">Todos</option></select></Field>
+          <Field label="Actividad"><select className="select" value={f.actividad || 'natacion'} onChange={set('actividad')}>{DB.ACTIVIDADES.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}</select></Field>
         </div>
         <div className="field-grid-3">
           <Field label="Tipo"><select className="select" value={f.tipo} onChange={set('tipo')}>{TR_TYPES.map(t => <option key={t}>{t}</option>)}</select></Field>
@@ -124,6 +125,7 @@ function TrainingCard({ t, onEdit, onDelete, highlight }) {
           <div style={{ minWidth: 0 }}>
             <div style={{ display: 'flex', gap: 8, marginBottom: 5, flexWrap: 'wrap' }}>
               <span className={`badge badge-${TR_TYPE_COLOR[t.tipo] || 'slate'}`}>{t.tipo}</span>
+              <span className={`badge ${DB.actividadOf(t) === 'fisica' ? 'badge-navy' : 'badge-cyan'}`}>{DB.actividadLabel(DB.actividadOf(t))}</span>
               <span className="badge badge-slate">{DB.groupLabel(t.grupo)}</span>
               {highlight && <span className="badge badge-cyan">Hoy</span>}
             </div>
@@ -166,11 +168,11 @@ function TrainingImport({ onClose }) {
   const [rows, setRows] = useState(null);
 
   function downloadTemplate() {
-    const headers = ['fecha*', 'titulo*', 'grupo', 'tipo', 'duracion', 'ubicacion', 'contenido'];
-    const example = ['2024-03-15', 'Técnica de viraje y streamline', 'G1', 'Técnica', 90, 'Piscina Municipal de Lo Prado', '400 nado suave + movilidad\n8×50 viraje con 5 ondas\n10×100 libre @2:20'];
-    const example2 = ['2024-03-17', 'Trabajo aeróbico base', 'G1', 'Aeróbico', 120, 'Piscina Municipal de Lo Prado', '600 suave\n10×200 libre @3:30\n400 vuelta'];
+    const headers = ['fecha*', 'titulo*', 'actividad', 'grupo', 'tipo', 'duracion', 'ubicacion', 'contenido'];
+    const example = ['2024-03-15', 'Técnica de viraje y streamline', 'natacion', 'G1', 'Técnica', 90, 'Piscina Municipal de Lo Prado', '400 nado suave + movilidad\n8×50 viraje con 5 ondas\n10×100 libre @2:20'];
+    const example2 = ['2024-03-17', 'Fuerza tren inferior', 'fisica', 'G1', 'Fuerza', 60, 'Gimnasio', '3×10 sentadilla\n3×12 zancadas\n3×30s plancha'];
     const ws = XLSX.utils.aoa_to_sheet([headers, example, example2]);
-    ws['!cols'] = [14, 32, 8, 14, 10, 26, 40].map(wch => ({ wch }));
+    ws['!cols'] = [14, 32, 12, 8, 14, 10, 26, 40].map(wch => ({ wch }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Entrenamientos');
     XLSX.writeFile(wb, 'plantilla_entrenamientos.xlsx');
@@ -191,6 +193,7 @@ function TrainingImport({ onClose }) {
           return {
             fecha: parseExcelDate(r['fecha*'] || r['fecha']),
             titulo: String(r['titulo*'] || r['titulo'] || '').trim(),
+            actividad: /f[ií]sica|prep/i.test(String(r['actividad'] || '')) ? 'fisica' : 'natacion',
             grupo: ['G1', 'G2', 'TODOS'].includes(grupo) ? grupo : 'G1',
             tipo: VALID_TYPES.has(tipo) ? tipo : 'Técnica',
             duracion: Math.max(1, parseInt(r['duracion'], 10) || 90),
@@ -229,7 +232,7 @@ function TrainingImport({ onClose }) {
               <div style={{ fontWeight: 700, color: 'var(--cyan-700)', fontSize: 14, marginBottom: 4 }}>1. Descarga la plantilla Excel</div>
               <div style={{ fontSize: 12.5, color: 'var(--cyan-600)', lineHeight: 1.5 }}>
                 Completa los entrenamientos. Las columnas con <strong>*</strong> son obligatorias.<br />
-                La fecha debe ser <code>YYYY-MM-DD</code>. Grupo: <code>G1</code>, <code>G2</code> o <code>TODOS</code>.<br />
+                La fecha debe ser <code>YYYY-MM-DD</code>. Actividad: <code>natacion</code> o <code>fisica</code>. Grupo: <code>G1</code>, <code>G2</code> o <code>TODOS</code>.<br />
                 Tipos válidos: {TR_TYPES.join(', ')}.
               </div>
             </div>
@@ -260,7 +263,7 @@ function TrainingImport({ onClose }) {
             <div style={{ maxHeight: 260, overflowY: 'auto', border: '1px solid var(--line)', borderRadius: 'var(--r-md)' }}>
               <table className="tbl">
                 <thead>
-                  <tr><th>Estado</th><th>Fecha</th><th>Título</th><th>Grupo</th><th>Tipo</th><th>Duración</th></tr>
+                  <tr><th>Estado</th><th>Fecha</th><th>Título</th><th>Actividad</th><th>Grupo</th><th>Tipo</th><th>Duración</th></tr>
                 </thead>
                 <tbody>
                   {rows.map((r, i) => {
@@ -270,6 +273,7 @@ function TrainingImport({ onClose }) {
                         <td><span className={`badge badge-${ok ? 'green' : 'red'}`}>{ok ? '✓' : 'Incompleto'}</span></td>
                         <td style={{ fontVariantNumeric: 'tabular-nums' }}>{r.fecha || <span style={{ color: 'var(--red)' }}>—</span>}</td>
                         <td style={{ fontWeight: 600, maxWidth: 180 }}>{r.titulo || <span style={{ color: 'var(--red)' }}>—</span>}</td>
+                        <td>{DB.actividadLabel(r.actividad)}</td>
                         <td><span className="badge badge-slate">{DB.groupLabel(r.grupo)}</span></td>
                         <td><span className={`badge badge-${TR_TYPE_COLOR[r.tipo] || 'slate'}`}>{r.tipo}</span></td>
                         <td>{r.duracion} min</td>

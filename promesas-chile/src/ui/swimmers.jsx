@@ -88,8 +88,9 @@ function SwimmerDetail({ swimmer, onClose, onEdit }) {
   const cat = DB.categoryFor(swimmer.fechaNacimiento);
   // attendance summary this month
   const ym = todayISO().slice(0, 7);
-  const att = st.attendance[swimmer.id] || {};
-  const present = Object.keys(att).filter(d => d.startsWith(ym) && att[d]).length;
+  const countIn = (act) => { const a = DB.attMap(st, act)[swimmer.id] || {}; return Object.keys(a).filter(d => d.startsWith(ym) && a[d]).length; };
+  const presentN = countIn('natacion');
+  const presentF = countIn('fisica');
   const evals = st.evaluations.filter(e => e.swimmerIds.includes(swimmer.id));
   const goldTime = DB.goldTimeFor(swimmer.prueba, swimmer.genero, swimmer.fechaNacimiento);
   const pct = goldTime ? DB.proximityPct(swimmer.tiempo, goldTime) : null;
@@ -122,7 +123,8 @@ function SwimmerDetail({ swimmer, onClose, onEdit }) {
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <span className="badge badge-cyan">{cat}</span>
           <span className="badge badge-slate">{swimmer.genero === 'F' ? 'Femenino' : 'Masculino'}</span>
-          {<span className="badge badge-green">{present} asistencias este mes</span>}
+          <span className="badge badge-green">Natación: {presentN} este mes</span>
+          <span className="badge badge-navy">P. física: {presentF} este mes</span>
           {evals.length > 0 && <span className="badge badge-navy">{evals.length} evaluaciones</span>}
           {pct != null && <span className="badge" style={{ background: pctColor + '1a', color: pctColor, border: `1px solid ${pctColor}40` }}>{pct}% del oro sudamericano</span>}
         </div>

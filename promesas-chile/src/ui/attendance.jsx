@@ -1,21 +1,21 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import { DB } from '../lib/db.js';
 import {
-  Icon, Avatar, avatarColor, getInitials,
-  useStore, useToast, Button, Modal, Field, Empty, Confirm,
-  MONTHS, WD_SHORT, fmtDate, fmtDateLong, todayISO, fmtTime, parseTime,
+  Icon, Avatar, useStore, useToast, Button, Empty,
+  MONTHS, WD_SHORT, todayISO,
 } from './components.jsx';
 
 
 /* ============================================================
    attendance.jsx — Panel de asistencia mensual
+   Natación y preparación física se registran por separado.
    ============================================================ */
 function AttendanceView() {
   const st = useStore();
   const toast = useToast();
-  const now = new Date();
   const [ym, setYm] = useState(todayISO().slice(0, 7));
   const [group, setGroup] = useState('G1');
+  const [act, setAct] = useState('natacion');
 
   const [yy, mm] = ym.split('-').map(Number);
   const daysInMonth = new Date(yy, mm, 0).getDate();
@@ -26,32 +26,45 @@ function AttendanceView() {
     st.swimmers.filter(s => s.group === group).sort((a, b) => a.nombre.localeCompare(b.nombre)),
     [st.swimmers, group]);
 
-  // Which days have scheduled trainings (highlight columns)
+  // Días con entrenamiento programado de la actividad elegida (columnas resaltadas)
   const trainingDays = useMemo(() => {
     const set = new Set();
-    st.trainings.forEach(t => { if (t.fecha.startsWith(ym)) set.add(parseInt(t.fecha.slice(8), 10)); });
+    st.trainings.forEach(t => {
+      if (t.fecha.startsWith(ym) && DB.actividadOf(t) === act) set.add(parseInt(t.fecha.slice(8), 10));
+    });
     return set;
-  }, [st.trainings, ym]);
+  }, [st.trainings, ym, act]);
 
   const shiftMonth = (d) => {
     const dt = new Date(yy, mm - 1 + d, 1);
     setYm(`${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`);
   };
 
+  const map = DB.attMap(st, act);
   const cellKey = (day) => `${ym}-${String(day).padStart(2, '0')}`;
-  const isPresent = (sid, day) => !!(st.attendance[sid] && st.attendance[sid][cellKey(day)]);
+  const isPresent = (sid, day) => !!(map[sid] && map[sid][cellKey(day)]);
 
   const swimmerTotal = (sid) => days.reduce((n, d) => n + (isPresent(sid, d) ? 1 : 0), 0);
   const dayTotal = (day) => swimmers.reduce((n, s) => n + (isPresent(s.id, day) ? 1 : 0), 0);
-  const activeDays = days.filter(d => trainingDays.has(d) || swimmers.some(s => isPresent(s.id, d)));
-  const grandTotal = swimmers.reduce((n, s) => n + swimmerTotal(s.id), 0);
-  const possible = activeDays.length * swimmers.length;
-  const pct = possible ? Math.round((grandTotal / possible) * 100) : 0;
+
+  // Estadística del grupo para ambas actividades
+  const statsN = DB.monthAttendance(st, swimmers, ym, 'natacion');
+  const statsF = DB.monthAttendance(st, swimmers, ym, 'fisica');
+  const cur = act === 'fisica' ? statsF : statsN;
+  const actLabel = DB.actividadLabel(act);
 
   const markColumn = (day, val) => {
-    swimmers.forEach(s => DB.setAttendance(s.id, cellKey(day), val));
-    toast(val ? `Día ${day} marcado presente` : `Día ${day} desmarcado`);
+    swimmers.forEach(s => DB.setAttendance(s.id, cellKey(day), val, act));
+    toast(val ? `Día ${day} marcado presente · ${actLabel}` : `Día ${day} desmarcado · ${actLabel}`);
   };
+
+  const statCard = (label, value, icon, bg, fg, sub) => (
+    <div className="stat">
+      <div className="label"><span className="ico" style={{ background: bg, color: fg }}><Icon name={icon} style={{ width: 16, height: 16 }} /></span>{label}</div>
+      <div className="value">{value}</div>
+      {sub && <div style={{ fontSize: 12, color: 'var(--slate-400)', marginTop: 2 }}>{sub}</div>}
+    </div>
+  );
 
   return (
     <div>
@@ -59,6 +72,11 @@ function AttendanceView() {
         <div className="tabs">
           <button className={`tab ${group === 'G1' ? 'active' : ''}`} onClick={() => setGroup('G1')}>Grupo 1</button>
           <button className={`tab ${group === 'G2' ? 'active' : ''}`} onClick={() => setGroup('G2')}>Grupo 2</button>
+        </div>
+        <div className="tabs">
+          {DB.ACTIVIDADES.map(a => (
+            <button key={a.id} className={`tab ${act === a.id ? 'active' : ''}`} onClick={() => setAct(a.id)}>{a.label}</button>
+          ))}
         </div>
         <div style={{ flex: 1 }} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', padding: 4 }}>
@@ -69,27 +87,19 @@ function AttendanceView() {
         <Button variant="ghost" size="sm" onClick={() => setYm(todayISO().slice(0, 7))}>Hoy</Button>
       </div>
 
-      <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginBottom: 20 }}>
-        <div className="stat">
-          <div className="label"><span className="ico" style={{ background: 'var(--cyan-050)', color: 'var(--cyan-700)' }}><Icon name="checkSquare" style={{ width: 16, height: 16 }} /></span>Asistencias del mes</div>
-          <div className="value">{grandTotal}</div>
-        </div>
-        <div className="stat">
-          <div className="label"><span className="ico" style={{ background: 'var(--green-bg)', color: 'var(--green)' }}><Icon name="trend" style={{ width: 16, height: 16 }} /></span>Tasa de asistencia</div>
-          <div className="value">{pct}<span style={{ fontSize: 20, color: 'var(--slate-400)' }}>%</span></div>
-        </div>
-        <div className="stat">
-          <div className="label"><span className="ico" style={{ background: 'var(--amber-bg)', color: 'var(--amber)' }}><Icon name="calendar" style={{ width: 16, height: 16 }} /></span>Días con entrenamiento</div>
-          <div className="value">{activeDays.length}</div>
-        </div>
+      <div className="stat-grid" style={{ marginBottom: 20 }}>
+        {statCard(`Asistencias · ${actLabel}`, cur.present, 'checkSquare', 'var(--cyan-050)', 'var(--cyan-700)', `${cur.activeDays.length} días con actividad`)}
+        {statCard('Tasa · Natación', <>{statsN.pct}<span style={{ fontSize: 20, color: 'var(--slate-400)' }}>%</span></>, 'wave', 'var(--green-bg)', 'var(--green)', `${statsN.present} de ${statsN.possible} posibles`)}
+        {statCard('Tasa · Prep. física', <>{statsF.pct}<span style={{ fontSize: 20, color: 'var(--slate-400)' }}>%</span></>, 'trend', '#efeafb', '#7B5BD6', `${statsF.present} de ${statsF.possible} posibles`)}
+        {statCard('Días con entrenamiento', trainingDays.size, 'calendar', 'var(--amber-bg)', 'var(--amber)', `programados · ${actLabel}`)}
       </div>
 
       <div className="card">
         <div className="card-head">
           <div className="ico"><Icon name="checkSquare" /></div>
           <div style={{ flex: 1 }}>
-            <h3>Asistencia diaria · {DB.groupLabel(group)}</h3>
-            <div style={{ fontSize: 12.5, color: 'var(--slate-500)' }}>Marca cada día de entrenamiento. Las columnas turquesa tienen entrenamiento programado.</div>
+            <h3>Asistencia diaria · {actLabel} · {DB.groupLabel(group)}</h3>
+            <div style={{ fontSize: 12.5, color: 'var(--slate-500)' }}>Marca cada día. Las columnas turquesa tienen entrenamiento de {actLabel.toLowerCase()} programado. Cambia de actividad con las pestañas de arriba.</div>
           </div>
         </div>
         {swimmers.length === 0 ? (
@@ -131,7 +141,7 @@ function AttendanceView() {
                         const isToday = cellKey(d) === todayStr;
                         return (
                           <td key={d} className={`att-cell ${isToday ? 'is-today' : ''}`}>
-                            <button className={`att-box ${on ? 'on' : ''}`} onClick={() => DB.toggleAttendance(s.id, cellKey(d))} aria-label={`Día ${d}`}>
+                            <button className={`att-box ${on ? 'on' : ''}`} onClick={() => DB.toggleAttendance(s.id, cellKey(d), act)} aria-label={`Día ${d} · ${actLabel}`}>
                               {on && <Icon name="check" />}
                             </button>
                           </td>
@@ -144,7 +154,7 @@ function AttendanceView() {
                 <tr className="att-foot-row">
                   <td className="att-name-col" style={{ fontWeight: 700, color: 'var(--slate-500)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '.05em' }}>Por día</td>
                   {days.map(d => <td key={d} className="att-cell" style={{ fontWeight: 700, color: 'var(--slate-500)', fontSize: 12.5 }}>{dayTotal(d) || ''}</td>)}
-                  <td className="att-total-col" style={{ fontWeight: 800, color: 'var(--navy)' }}>{grandTotal}</td>
+                  <td className="att-total-col" style={{ fontWeight: 800, color: 'var(--navy)' }}>{swimmers.reduce((n, s) => n + swimmerTotal(s.id), 0)}</td>
                 </tr>
               </tbody>
             </table>
@@ -154,7 +164,7 @@ function AttendanceView() {
       <p style={{ fontSize: 12.5, color: 'var(--slate-400)', marginTop: 14, display: 'flex', gap: 18, flexWrap: 'wrap' }}>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><span style={{ width: 14, height: 14, borderRadius: 4, background: 'var(--cyan)', display: 'inline-block' }} /> Presente</span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><span style={{ width: 14, height: 14, borderRadius: 4, border: '1.5px solid var(--line)', display: 'inline-block' }} /> Ausente</span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><span style={{ width: 14, height: 14, borderRadius: 4, background: 'var(--cyan-050)', border: '1px solid var(--cyan-100)', display: 'inline-block' }} /> Día con entrenamiento</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><span style={{ width: 14, height: 14, borderRadius: 4, background: 'var(--cyan-050)', border: '1px solid var(--cyan-100)', display: 'inline-block' }} /> Día con entrenamiento de {actLabel.toLowerCase()}</span>
       </p>
     </div>
   );
