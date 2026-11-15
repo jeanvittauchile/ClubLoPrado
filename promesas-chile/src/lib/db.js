@@ -71,7 +71,7 @@ async function runOp(op) {
       return !error;
     }
     if (op.type === 'delete') {
-      const { error } = await supabase.from(op.table).delete().eq('owner', userId).eq('id', op.id);
+      const { error } = await supabase.from(op.table).delete().eq('id', op.id);
       return !error;
     }
     if (op.type === 'coach') {
@@ -83,11 +83,11 @@ async function runOp(op) {
       return !error;
     }
     if (op.type === 'att-del') {
-      const { error } = await supabase.from('attendance').delete().eq('owner', userId).eq('swimmer_id', op.swimmerId).eq('day', op.day);
+      const { error } = await supabase.from('attendance').delete().eq('swimmer_id', op.swimmerId).eq('day', op.day);
       return !error;
     }
     if (op.type === 'att-del-swimmer') {
-      const { error } = await supabase.from('attendance').delete().eq('owner', userId).eq('swimmer_id', op.swimmerId);
+      const { error } = await supabase.from('attendance').delete().eq('swimmer_id', op.swimmerId);
       return !error;
     }
     if (op.type === 'report') {
@@ -96,10 +96,10 @@ async function runOp(op) {
     }
     if (op.type === 'wipe') {
       for (const t of ['swimmers', 'trainings', 'evaluations', 'bajas']) {
-        await supabase.from(t).delete().eq('owner', userId);
+        await supabase.from(t).delete().not('id', 'is', null);
       }
-      await supabase.from('attendance').delete().eq('owner', userId);
-      await supabase.from('reports').delete().eq('owner', userId);
+      await supabase.from('attendance').delete().not('swimmer_id', 'is', null);
+      await supabase.from('reports').delete().not('ym', 'is', null);
       return true;
     }
     return true;
@@ -114,12 +114,12 @@ async function hydrateFromCloud() {
   if (!hasSupabaseConfig || !supabase || !userId) return;
   try {
     const [sw, tr, ev, bj, att, rep, co] = await Promise.all([
-      supabase.from('swimmers').select('doc').eq('owner', userId),
-      supabase.from('trainings').select('doc').eq('owner', userId),
-      supabase.from('evaluations').select('doc').eq('owner', userId),
-      supabase.from('bajas').select('doc').eq('owner', userId),
-      supabase.from('attendance').select('swimmer_id, day').eq('owner', userId),
-      supabase.from('reports').select('ym, notas, resultados').eq('owner', userId),
+      supabase.from('swimmers').select('doc'),
+      supabase.from('trainings').select('doc'),
+      supabase.from('evaluations').select('doc'),
+      supabase.from('bajas').select('doc'),
+      supabase.from('attendance').select('swimmer_id, day'),
+      supabase.from('reports').select('ym, notas, resultados'),
       supabase.from('coach').select('doc').eq('owner', userId).maybeSingle(),
     ]);
 
@@ -182,7 +182,10 @@ function subscribeRealtime() {
   if (channel) supabase.removeChannel(channel);
   channel = supabase.channel(`pcn:${userId}`);
   ['swimmers', 'trainings', 'evaluations', 'bajas', 'attendance', 'reports', 'coach'].forEach(table => {
-    channel.on('postgres_changes', { event: '*', schema: 'public', table, filter: `owner=eq.${userId}` }, scheduleHydrate);
+    // datos del club: cambios de cualquier entrenador; perfil (coach): sólo el propio
+    const opts = { event: '*', schema: 'public', table };
+    if (table === 'coach') opts.filter = `owner=eq.${userId}`;
+    channel.on('postgres_changes', opts, scheduleHydrate);
   });
   channel.subscribe();
 }

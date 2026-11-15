@@ -1,7 +1,7 @@
 /* ============================================================
    app.jsx — autenticación (Supabase) + shell + ajustes
    ============================================================ */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { DB } from '../lib/db.js';
 import { supabase, hasSupabaseConfig } from '../lib/supabase.js';
 import {
@@ -17,9 +17,6 @@ import { GoldTimesView } from './goldtimes.jsx';
 
 const LOGO = '/logo.png';
 
-// Credenciales de cuenta compartida (opcionales — definir en .env.local y Vercel)
-const SHARED_EMAIL    = import.meta.env.VITE_APP_EMAIL;
-const SHARED_PASSWORD = import.meta.env.VITE_APP_PASSWORD;
 
 /* ============================================================
    Ajustes
@@ -32,6 +29,17 @@ function Settings({ onClose }) {
   const [confirmReset, setConfirmReset] = useState(false);
 
   const saveCoach = () => { DB.updateCoach(c); toast('Datos del técnico guardados'); };
+
+  const [accountEmail, setAccountEmail] = useState('');
+  const [newPass, setNewPass] = useState('');
+  useEffect(() => {
+    if (supabase) supabase.auth.getSession().then(({ data }) => setAccountEmail(data.session?.user?.email || ''));
+  }, []);
+  const changePassword = async () => {
+    if (newPass.length < 8) { toast('La contraseña debe tener al menos 8 caracteres'); return; }
+    const { error } = await supabase.auth.updateUser({ password: newPass });
+    if (error) toast('No se pudo cambiar la contraseña'); else { toast('Contraseña actualizada'); setNewPass(''); }
+  };
 
   return (
     <Modal title="Ajustes" sub="Perfil del técnico y datos" onClose={onClose} maxWidth={560}
@@ -49,16 +57,29 @@ function Settings({ onClose }) {
         <div><Button size="sm" icon="check" onClick={saveCoach}>Guardar perfil</Button></div>
       </div>
 
+      {accountEmail && (
+        <>
+          <div className="divider" />
+          <div className="section-title"><h2>Cuenta</h2><div className="line" /></div>
+          <p style={{ fontSize: 13, color: 'var(--slate-500)', marginTop: 0 }}>Sesión iniciada como <strong>{accountEmail}</strong></p>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 14 }}>
+            <Field label="Nueva contraseña"><input className="input" type="password" autoComplete="new-password" value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="Mínimo 8 caracteres" /></Field>
+            <Button size="sm" variant="ghost" icon="lock" onClick={changePassword}>Cambiar contraseña</Button>
+          </div>
+          <Button size="sm" variant="ghost" icon="logout" onClick={() => { onClose(); supabase.auth.signOut(); }}>Cerrar sesión</Button>
+        </>
+      )}
+
       <div className="divider" />
       <div className="section-title"><h2>Datos</h2><div className="line" /></div>
       <p style={{ fontSize: 13, color: 'var(--slate-500)', marginTop: 0 }}>
-        Tus datos se sincronizan con la nube (Supabase) cuando hay conexión y quedan disponibles offline en este dispositivo.
+        Los datos son compartidos por todos los entrenadores del club. Se sincronizan con la nube cuando hay conexión y quedan disponibles offline en este dispositivo.
       </p>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
-        <Button size="sm" variant="ghost" icon="download" onClick={async () => { await DB.loadDemoData(); toast('Datos de demostración cargados'); }}>Cargar datos de demostración</Button>
-      </div>
-      {!confirmReset ? <Button size="sm" variant="danger" icon="trash" onClick={() => setConfirmReset(true)}>Borrar todos los datos</Button>
-        : <div style={{ display: 'flex', gap: 8 }}><Button size="sm" variant="danger" onClick={() => { DB.resetAll(); toast('Datos borrados'); setConfirmReset(false); }}>Confirmar borrado</Button><Button size="sm" variant="ghost" onClick={() => setConfirmReset(false)}>Cancelar</Button></div>}
+      {!confirmReset ? <Button size="sm" variant="danger" icon="trash" onClick={() => setConfirmReset(true)}>Borrar todos los datos del club</Button>
+        : <div>
+            <p style={{ fontSize: 13, color: 'var(--red)', margin: '0 0 8px' }}>Esto borra nadadores, asistencia, entrenamientos, evaluaciones e informes <strong>para todos los entrenadores</strong>. No se puede deshacer.</p>
+            <div style={{ display: 'flex', gap: 8 }}><Button size="sm" variant="danger" onClick={() => { DB.resetAll(); toast('Datos borrados'); setConfirmReset(false); }}>Confirmar borrado</Button><Button size="sm" variant="ghost" onClick={() => setConfirmReset(false)}>Cancelar</Button></div>
+          </div>}
     </Modal>
   );
 }
@@ -190,78 +211,168 @@ function Splash({ text = 'Cargando…' }) {
 /* ============================================================
    Raíz: gestiona sesión Supabase → init DB → Shell
 
-   Si existen VITE_APP_EMAIL + VITE_APP_PASSWORD, la app usa
-   una cuenta compartida: todos los dispositivos ven los mismos
-   datos sin ningún paso de login.
-   Sin esas variables, crea una sesión anónima local (comportamiento
-   anterior, datos solo en este dispositivo).
+   Cada entrenador entra con su propia cuenta (correo + contraseña).
+   Sólo los correos registrados en la tabla club_members pueden ver
+   los datos, que son compartidos por todo el club.
    ============================================================ */
-function Root() {
-  const [phase, setPhase] = useState('boot'); // boot | app
 
-  const applySession = useCallback(async (s) => {
-    if (!s) {
+// Se lee al cargar el módulo, antes de que Supabase limpie la URL.
+let mustSetPassword = /type=(recovery|invite)/.test(window.location.hash + window.location.search);
+
+function AuthCard({ title, sub, children }) {
+  return (
+    <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: 'var(--bg)', padding: 16 }}>
+      <div className="card card-pad" style={{ width: '100%', maxWidth: 400, padding: 28 }}>
+        <div style={{ textAlign: 'center', marginBottom: 20 }}>
+          <img src={LOGO} alt="Club Natación Lo Prado" style={{ width: 110, borderRadius: 12, marginBottom: 14 }} />
+          <h2 style={{ margin: '0 0 4px' }}>{title}</h2>
+          {sub && <div style={{ fontSize: 13, color: 'var(--slate-500)' }}>{sub}</div>}
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+const AUTH_ERRORS = {
+  'Invalid login credentials': 'Correo o contraseña incorrectos.',
+  'Email not confirmed': 'Debes confirmar tu correo antes de entrar.',
+};
+const authMsg = (e) => AUTH_ERRORS[e?.message] || e?.message || 'No se pudo completar la operación.';
+
+function Login() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null); // { type: 'error' | 'ok', text }
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setBusy(true); setMsg(null);
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    setBusy(false);
+    if (error) setMsg({ type: 'error', text: authMsg(error) });
+  };
+  const forgot = async () => {
+    if (!email.trim()) { setMsg({ type: 'error', text: 'Escribe tu correo y vuelve a presionar "¿Olvidaste tu contraseña?".' }); return; }
+    setBusy(true); setMsg(null);
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin });
+    setBusy(false);
+    setMsg(error ? { type: 'error', text: authMsg(error) } : { type: 'ok', text: 'Te enviamos un correo con un enlace para crear una nueva contraseña.' });
+  };
+
+  return (
+    <AuthCard title="Club Natación Lo Prado" sub="Ingresa con tu cuenta de entrenador">
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <Field label="Correo"><input className="input" type="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} required /></Field>
+        <Field label="Contraseña"><input className="input" type="password" autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} required /></Field>
+        {msg && <div style={{ fontSize: 13, color: msg.type === 'error' ? 'var(--red)' : 'var(--green)' }}>{msg.text}</div>}
+        <Button type="submit" disabled={busy}>{busy ? 'Ingresando…' : 'Entrar'}</Button>
+        <button type="button" onClick={forgot} disabled={busy} style={{ background: 'none', border: 'none', color: 'var(--cyan-700)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+          ¿Olvidaste tu contraseña?
+        </button>
+      </form>
+    </AuthCard>
+  );
+}
+
+function SetPassword({ onDone }) {
+  const [p1, setP1] = useState('');
+  const [p2, setP2] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const submit = async (e) => {
+    e.preventDefault();
+    if (p1.length < 8) { setErr('La contraseña debe tener al menos 8 caracteres.'); return; }
+    if (p1 !== p2) { setErr('Las contraseñas no coinciden.'); return; }
+    setBusy(true); setErr('');
+    const { error } = await supabase.auth.updateUser({ password: p1 });
+    setBusy(false);
+    if (error) setErr(authMsg(error)); else onDone();
+  };
+  return (
+    <AuthCard title="Crea tu contraseña" sub="La usarás para entrar a la plataforma">
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <Field label="Nueva contraseña"><input className="input" type="password" autoComplete="new-password" value={p1} onChange={e => setP1(e.target.value)} required /></Field>
+        <Field label="Repite la contraseña"><input className="input" type="password" autoComplete="new-password" value={p2} onChange={e => setP2(e.target.value)} required /></Field>
+        {err && <div style={{ fontSize: 13, color: 'var(--red)' }}>{err}</div>}
+        <Button type="submit" disabled={busy}>{busy ? 'Guardando…' : 'Guardar y entrar'}</Button>
+      </form>
+    </AuthCard>
+  );
+}
+
+function NotMember({ email, detail }) {
+  return (
+    <AuthCard title="Cuenta sin acceso" sub={email}>
+      <p style={{ fontSize: 13.5, color: 'var(--slate-500)', lineHeight: 1.5, marginTop: 0 }}>
+        Tu cuenta existe, pero todavía no está autorizada para ver los datos del club.
+        Pide al administrador que agregue tu correo a la lista de entrenadores.
+      </p>
+      {detail && <p style={{ fontSize: 12, color: 'var(--slate-400)' }}>Detalle: {detail}</p>}
+      <Button variant="ghost" onClick={() => supabase.auth.signOut()}>Cerrar sesión</Button>
+    </AuthCard>
+  );
+}
+
+function Root() {
+  // boot | login | set-password | denied | app
+  const [phase, setPhase] = useState('boot');
+  const [denied, setDenied] = useState({ email: '', detail: '' });
+  const currentUser = useRef(null);
+
+  const enter = useCallback(async (session) => {
+    if (!session) {
+      currentUser.current = null;
       DB.teardown();
-      await DB.init('local');
-    } else {
-      await DB.init(s.user.id);
+      setPhase('login');
+      return;
     }
+    if (mustSetPassword) { setPhase('set-password'); return; }
+    if (currentUser.current === session.user.id) return; // ya dentro
+    const { data: ok, error } = await supabase.rpc('is_club_member');
+    const offline = error && !navigator.onLine;
+    if (!offline && (error || !ok)) {
+      DB.teardown();
+      setDenied({ email: session.user.email || '', detail: error ? error.message : '' });
+      setPhase('denied');
+      return;
+    }
+    currentUser.current = session.user.id;
+    await DB.init(session.user.id);
     setPhase('app');
   }, []);
 
   useEffect(() => {
-    let unsub;
-    (async () => {
-      if (!hasSupabaseConfig || !supabase) {
-        await DB.init('local');
-        setPhase('app');
-        return;
-      }
-
-      // Reusar sesión existente si la hay (evita login innecesario)
-      const { data: existing } = await supabase.auth.getSession();
-      if (existing.session) {
-        await applySession(existing.session);
-        const sub = supabase.auth.onAuthStateChange((event, s) => {
-          if (event === 'INITIAL_SESSION') return;
-          applySession(s);
-        });
-        unsub = sub.data.subscription;
-        return;
-      }
-
-      // Sin sesión — iniciar sesión automáticamente
-      if (SHARED_EMAIL && SHARED_PASSWORD) {
-        // Cuenta compartida: mismos datos en todos los dispositivos
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: SHARED_EMAIL,
-          password: SHARED_PASSWORD,
-        });
-        if (!error && data.session) {
-          await applySession(data.session);
-          const sub = supabase.auth.onAuthStateChange((event, s) => {
-            if (event === 'INITIAL_SESSION') return;
-            applySession(s);
-          });
-          unsub = sub.data.subscription;
-          return;
-        }
-        console.warn('[auth] signInWithPassword falló, usando sesión anónima:', error?.message);
-      }
-
-      // Fallback: sesión anónima (datos solo en este dispositivo)
-      const { data: anonData } = await supabase.auth.signInAnonymously();
-      await applySession(anonData.session);
-      const sub = supabase.auth.onAuthStateChange((event, s) => {
-        if (event === 'INITIAL_SESSION') return;
-        applySession(s);
-      });
-      unsub = sub.data.subscription;
-    })();
-    return () => { if (unsub) unsub.unsubscribe(); };
-  }, [applySession]);
+    if (!hasSupabaseConfig || !supabase) {
+      DB.init('local').then(() => setPhase('app'));
+      return;
+    }
+    let cancelled = false;
+    // Las llamadas a Supabase dentro del callback se difieren (evita bloqueos de supabase-js).
+    const { data } = supabase.auth.onAuthStateChange((event, s) => {
+      if (cancelled || event === 'INITIAL_SESSION') return;
+      if (event === 'PASSWORD_RECOVERY') { mustSetPassword = true; setPhase('set-password'); return; }
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') setTimeout(() => enter(s), 0);
+    });
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!cancelled) enter(session);
+    });
+    return () => { cancelled = true; data.subscription.unsubscribe(); };
+  }, [enter]);
 
   if (phase === 'boot') return <Splash />;
+  if (phase === 'login') return <Login />;
+  if (phase === 'set-password') {
+    return <SetPassword onDone={async () => {
+      mustSetPassword = false;
+      window.history.replaceState(null, '', window.location.pathname);
+      const { data: { session } } = await supabase.auth.getSession();
+      currentUser.current = null;
+      enter(session);
+    }} />;
+  }
+  if (phase === 'denied') return <NotMember {...denied} />;
   return <Shell />;
 }
 
