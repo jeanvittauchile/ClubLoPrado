@@ -228,7 +228,7 @@ export function parseTime(str) {
 }
 
 /* ---------- Helpers compartidos de dominio ---------- */
-export const TR_TYPES = ['Técnica', 'Aeróbico', 'Velocidad', 'Específico', 'Resistencia', 'Recuperación'];
-export const TR_TYPE_COLOR = { 'Técnica': 'cyan', 'Aeróbico': 'navy', 'Velocidad': 'red', 'Específico': 'amber', 'Resistencia': 'green', 'Recuperación': 'slate', 'Fuerza': 'red', 'Movilidad': 'green' };
+export const TR_TYPES = ['25 m-15m', '50m', '100m', '200m', '400m', '800m', '1500m'];
+export const TR_TYPE_COLOR = { '25 m-15m': 'red', '50m': 'amber', '100m': 'cyan', '200m': 'navy', '400m': 'green', '800m': 'slate', '1500m': 'slate', 'Técnica': 'cyan', 'Aeróbico': 'navy', 'Velocidad': 'red', 'Específico': 'amber', 'Resistencia': 'green', 'Recuperación': 'slate', 'Fuerza': 'red', 'Movilidad': 'green' };
 export function protoById(id) { return DB.PROTOCOLS.find(p => p.id === id); }
 export function metricMeta(m) { return DB.METRIC_TYPES[m]; }

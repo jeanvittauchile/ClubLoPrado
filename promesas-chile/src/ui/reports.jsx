@@ -80,17 +80,11 @@ function ReportsView() {
 /* ── ReportPaper: 2 páginas A4 ── */
 function ReportPaper({ st, ym, yy, mm, nadadores, statsN, statsF, activeDaysCount, monthEvals, monthTrainings, meta, logoUrl, protoById, metricMeta }) {
   const coach = st.coach;
-  const VOLM = [
-    { k: 'total', label: 'Total', color: 'var(--navy)' },
-    { k: 'tecnica', label: 'Técnica', color: '#00A6C6' },
-    { k: 'pateo', label: 'Pateo', color: '#E0793B' },
-    { k: 'brazos', label: 'Brazos', color: '#1FA971' },
-    { k: 'velocidad', label: 'Velocidad ≤25 m', color: '#E1543B' },
-  ];
   const trVols = monthTrainings.map(t => ({ t, v: DB.volumenFor(t) }));
   const monthVol = trVols.reduce((a, { v }) => {
-    VOLM.forEach(m => { a[m.k] += (+v[m.k] || 0); }); return a;
-  }, { total: 0, tecnica: 0, pateo: 0, brazos: 0, velocidad: 0 });
+    a.total += (+v.total || 0);
+    DB.VOL_KEYS.forEach(k => { a[k] += (+v[k] || 0); }); return a;
+  }, DB.VOL_KEYS.reduce((a, k) => { a[k] = 0; return a; }, { total: 0 }));
   const nM = (n) => (+n || 0).toLocaleString('es-CL');
 
   return (
@@ -286,13 +280,10 @@ function ReportPaper({ st, ym, yy, mm, nadadores, statsN, statsF, activeDaysCoun
                 <tr>
                   <th>Fecha</th>
                   <th>Sesión</th>
-                  <th>Tipo</th>
+                  <th>Ritmo</th>
                   <th className="num">Min</th>
                   <th className="num">Total</th>
-                  <th className="num">Téc.</th>
-                  <th className="num">Pateo</th>
-                  <th className="num">Brazos</th>
-                  <th className="num">Vel.≤25</th>
+                  {DB.VOL_CATS.map(c => <th key={c.k} className="num">{c.short}</th>)}
                 </tr>
               </thead>
               <tbody>
@@ -303,10 +294,7 @@ function ReportPaper({ st, ym, yy, mm, nadadores, statsN, statsF, activeDaysCoun
                     <td>{t.tipo}</td>
                     <td className="num">{t.duracion}</td>
                     <td className="num strong">{nM(v.total)}</td>
-                    <td className="num">{nM(v.tecnica)}</td>
-                    <td className="num">{nM(v.pateo)}</td>
-                    <td className="num">{nM(v.brazos)}</td>
-                    <td className="num">{nM(v.velocidad)}</td>
+                    {DB.VOL_CATS.map(c => <td key={c.k} className="num">{nM(v[c.k])}</td>)}
                   </tr>
                 ))}
               </tbody>
@@ -314,10 +302,12 @@ function ReportPaper({ st, ym, yy, mm, nadadores, statsN, statsF, activeDaysCoun
                 <tr>
                   <td className="strong" colSpan={4}>Consolidado del mes</td>
                   <td className="num strong">{nM(monthVol.total)}</td>
-                  <td className="num strong">{nM(monthVol.tecnica)}</td>
-                  <td className="num strong">{nM(monthVol.pateo)}</td>
-                  <td className="num strong">{nM(monthVol.brazos)}</td>
-                  <td className="num strong">{nM(monthVol.velocidad)}</td>
+                  {DB.VOL_CATS.map(c => <td key={c.k} className="num strong">{nM(monthVol[c.k])}</td>)}
+                </tr>
+                <tr>
+                  <td colSpan={4}>% del volumen del mes</td>
+                  <td className="num">100%</td>
+                  {DB.VOL_CATS.map(c => <td key={c.k} className="num">{DB.volPct(monthVol, c.k).toLocaleString('es-CL')}%</td>)}
                 </tr>
               </tfoot>
             </table>

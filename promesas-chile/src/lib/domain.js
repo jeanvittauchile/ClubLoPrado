@@ -41,64 +41,91 @@ export function levelFor(protocol, avgTime) {
 }
 
 /* ---------- Volumen de la sesión ----------
-   Analiza el contenido (texto libre, una serie por línea) y reparte los
-   metros en: total, técnica, pateo (patada), brazos (pull) y velocidad ≤25 m.
-   Notación soportada: "400", "12×25", "10x100", "3×(400 libre + 100 patada)". */
-const VOL_KW = {
-  pateo: /(patada|pateo|\bkick\b|aleta|piernas?\b|tabla)/i,
-  brazos: /(\bbrazos\b|\bpull\b|tracci[oó]n|\bremo\b|remad|paddle|palet)/i,
-  tecnica: /(t[eé]cnic|viraje|stream|onda|subacu|\bsalida|drill|ejercicio|coordinaci|deslizamiento|alineaci|posici[oó]n|cat[ck]?\s?up|punto muerto|skill)/i,
-  velocidad: /(sprint|velocidad|m[aá]xim|explosiv|\bfuerte\b|all[\s-]?out|partida|reacci[oó]n)/i,
-};
+   El volumen se toma de los TÍTULOS de cada bloque del contenido, por ejemplo:
+     PRE SET : 500m            → calentamiento
+     SET 2000m                 → set principal
+     SET TECNICO : 500m        → técnica
+     SET PIERNAS x2 500m       → piernas (2 × 500 = 1.000 m)
+   Bloques: pre set, principal, técnico, piernas, brazos, sub acuático,
+   virajes y salidas. El total es la suma de todos los bloques. Las líneas
+   que no son títulos (detalle de las series) no se suman. */
+export const VOL_CATS = [
+  { k: 'preset', label: 'Pre set', short: 'Pre set', color: '#7C8BA1' },
+  { k: 'principal', label: 'Set principal', short: 'Princ.', color: '#2E4A7D' },
+  { k: 'tecnica', label: 'Set técnico', short: 'Téc.', color: '#00A6C6' },
+  { k: 'piernas', label: 'Set piernas', short: 'Piernas', color: '#E0793B' },
+  { k: 'brazos', label: 'Set brazos', short: 'Brazos', color: '#1FA971' },
+  { k: 'subacuatico', label: 'Set sub acuático', short: 'Sub.', color: '#6C5CE7' },
+  { k: 'virajes', label: 'Set virajes', short: 'Viraj.', color: '#D4A017' },
+  { k: 'salidas', label: 'Set salidas', short: 'Salid.', color: '#E1543B' },
+];
+export const VOL_KEYS = VOL_CATS.map(c => c.k);
 
-function classifySeg(seg, repDist) {
-  const s = (seg || '').toLowerCase();
-  if (VOL_KW.pateo.test(s)) return 'pateo';
-  if (VOL_KW.brazos.test(s)) return 'brazos';
-  if (VOL_KW.velocidad.test(s)) return (repDist != null && repDist <= 25) ? 'velocidad' : null;
-  if (VOL_KW.tecnica.test(s)) return 'tecnica';
-  return null;
+const emptyVol = () => VOL_KEYS.reduce((a, k) => { a[k] = 0; return a; }, { total: 0 });
+const norm = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const toInt = (s) => parseInt(String(s).replace(/[.,\s]/g, ''), 10) || 0;
+
+const SET_HEAD = /^[\s\-–•*#>]*(pre\s*-?\s*set|set)\b(.*)$/;
+function setCategory(name, isPre) {
+  if (isPre) return 'preset';
+  if (/tecnic/.test(name)) return 'tecnica';
+  if (/(pierna|patada|pateo|kick)/.test(name)) return 'piernas';
+  if (/(brazo|pull)/.test(name)) return 'brazos';
+  if (/sub\s*-?\s*acuatic/.test(name)) return 'subacuatico';
+  if (/viraje/.test(name)) return 'virajes';
+  if (/salida/.test(name)) return 'salidas';
+  return 'principal';
 }
 
-function segMeters(seg) {
-  const nx = String(seg).match(/(\d+)\s*[×xX*]\s*(\d+)/);
-  if (nx) { const r = parseInt(nx[1], 10), d = parseInt(nx[2], 10); return { meters: r * d, repDist: d }; }
-  const d = String(seg).match(/(\d+)/);
-  if (d) { const v = parseInt(d[1], 10); return { meters: v, repDist: v }; }
-  return { meters: 0, repDist: null };
-}
-
-/* Quita el contenido entre paréntesis: se usa para describir el trabajo
-   (foco técnico, detalle del ejercicio, etc.), no para sumar metros extra. */
-function stripParens(s) {
-  return String(s).replace(/\([^)]*\)/g, ' ');
+/* Interpreta una línea de título de set. Devuelve null si no lo es.
+   Solo cuentan los metros del título (el primer valor tras SET / PRE SET) y
+   su multiplicador (x2, x3…). Lo que venga después es descripción y no suma:
+   "SET 2000m 20x50m mariposa A2" → 2.000 m. */
+const NUM_TOKEN = /([x×*]\s*)?(\d{1,3}(?:[.,]\d{3})+|\d+)(\s*[x×*])?(\s*(?:m|mt|mts|metros)\b)?/g;
+export function parseSetHeading(line) {
+  const h = norm(line).match(SET_HEAD);
+  if (!h) return null;
+  const head = h[2];
+  const toks = [...head.matchAll(NUM_TOKEN)].map(t => ({
+    i: t.index, end: t.index + t[0].length, n: toInt(t[2]),
+    lead: !!t[1], trail: !!t[3], unit: !!t[4],
+  }));
+  // Metros del set: el primer número con unidad; si no hay, el primer número que no sea multiplicador.
+  let mi = toks.findIndex(t => t.unit);
+  if (mi < 0) mi = toks.findIndex(t => !t.lead && !t.trail);
+  if (mi < 0) return { cat: setCategory(head, /^pre/.test(h[1])), meters: 0 };
+  const m = toks[mi];
+  let mult = 1;
+  const before = toks.slice(0, mi).filter(t => t.lead || t.trail);
+  const next = toks[mi + 1];
+  if (before.length) mult = before[before.length - 1].n || 1;
+  else if (next && next.lead && !next.unit && /^\s*$/.test(head.slice(m.end, next.i))) mult = next.n || 1;
+  return { cat: setCategory(head.slice(0, m.i), /^pre/.test(h[1])), meters: m.n * mult };
 }
 
 export function parseVolume(contenido) {
-  const out = { total: 0, tecnica: 0, pateo: 0, brazos: 0, velocidad: 0 };
-  const lines = String(contenido || '').split(/\n/).map(l => l.trim()).filter(Boolean);
-  lines.forEach(line => {
-    const paren = line.match(/(\d+)\s*[×xX*]\s*\(([^)]*)\)/);
-    if (paren) {
-      const reps = parseInt(paren[1], 10);
-      paren[2].split('+').forEach(part => {
-        const { meters, repDist } = segMeters(part);
-        const m = meters * reps;
-        if (m > 0) { out.total += m; const c = classifySeg(part, repDist); if (c) out[c] += m; }
-      });
-      return;
-    }
-    const { meters, repDist } = segMeters(stripParens(line));
-    if (meters > 0) { out.total += meters; const c = classifySeg(line, repDist); if (c) out[c] += meters; }
+  const out = emptyVol();
+  String(contenido || '').split(/\n/).forEach(line => {
+    const s = parseSetHeading(line);
+    if (s && s.meters > 0) { out[s.cat] += s.meters; out.total += s.meters; }
   });
   return out;
 }
 
-/* Volumen efectivo de un entrenamiento: usa el ajuste manual si existe, o el cálculo automático. */
+/* Porcentaje de un bloque sobre el total de la sesión. */
+export function volPct(v, k) {
+  return v && v.total ? Math.round((+v[k] || 0) * 1000 / v.total) / 10 : 0;
+}
+
+/* Volumen efectivo de un entrenamiento: usa el ajuste manual si existe, o el cálculo automático.
+   En modo manual el total es siempre la suma de los bloques. */
 export function volumenFor(t) {
   if (t && t.volumen && t.volumen.manual) {
-    const v = t.volumen;
-    return { total: +v.total || 0, tecnica: +v.tecnica || 0, pateo: +v.pateo || 0, brazos: +v.brazos || 0, velocidad: +v.velocidad || 0, manual: true };
+    const v = t.volumen, out = emptyVol();
+    VOL_KEYS.forEach(k => { out[k] = +v[k] || 0; });
+    if (!out.piernas && v.pateo) out.piernas = +v.pateo || 0; // ajustes antiguos
+    out.total = VOL_KEYS.reduce((a, k) => a + out[k], 0) || (+v.total || 0);
+    return { ...out, manual: true };
   }
   return { ...parseVolume(t ? t.contenido : ''), manual: false };
 }

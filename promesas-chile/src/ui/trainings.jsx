@@ -11,29 +11,27 @@ import {
 /* ============================================================
    trainings.jsx — Gestión de entrenamientos
    ============================================================ */
-const TR_TYPES = ['Técnica', 'Aeróbico', 'Velocidad', 'Específico', 'Resistencia', 'Recuperación', 'Fuerza', 'Movilidad'];
-const TR_TYPE_COLOR = { 'Técnica': 'cyan', 'Aeróbico': 'navy', 'Velocidad': 'red', 'Específico': 'amber', 'Resistencia': 'green', 'Recuperación': 'slate', 'Fuerza': 'red', 'Movilidad': 'green' };
-const TR_EMPTY = { fecha: '', titulo: '', actividad: 'natacion', grupo: 'G1', tipo: 'Técnica', duracion: 90, ubicacion: 'Piscina Municipal de Lo Prado', contenido: '' };
+const TR_TYPES = ['25 m-15m', '50m', '100m', '200m', '400m', '800m', '1500m'];
+const TR_TYPE_COLOR = { '25 m-15m': 'red', '50m': 'amber', '100m': 'cyan', '200m': 'navy', '400m': 'green', '800m': 'slate', '1500m': 'slate', 'Técnica': 'cyan', 'Aeróbico': 'navy', 'Velocidad': 'red', 'Específico': 'amber', 'Resistencia': 'green', 'Recuperación': 'slate', 'Fuerza': 'red', 'Movilidad': 'green' };
+const TR_EMPTY = { fecha: '', titulo: '', actividad: 'natacion', grupo: 'G1', tipo: '50m', duracion: 90, ubicacion: 'Piscina Municipal de Lo Prado', contenido: '' };
 
-const VOL_META = [
-  { k: 'total', label: 'Total', color: 'var(--navy)' },
-  { k: 'tecnica', label: 'Técnica', color: '#00A6C6' },
-  { k: 'pateo', label: 'Pateo', color: '#E0793B' },
-  { k: 'brazos', label: 'Brazos', color: '#1FA971' },
-  { k: 'velocidad', label: 'Velocidad ≤25m', color: '#E1543B' },
-];
 const fmtM = (n) => `${(+n || 0).toLocaleString('es-CL')} m`;
+const fmtPct = (p) => `${(+p || 0).toLocaleString('es-CL', { maximumFractionDigits: 1 })}%`;
 
 function VolumeStrip({ t, sub }) {
   const v = DB.volumenFor(t);
   if (!v.total) return null;
   return (
     <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 12, alignItems: 'center' }}>
-      {VOL_META.map(m => (
-        <span key={m.k} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 9px', background: m.k === 'total' ? 'var(--navy)' : 'var(--surface-2)', border: `1px solid ${m.k === 'total' ? 'var(--navy)' : 'var(--line-soft)'}`, borderRadius: 'var(--r-sm)', fontSize: 11.5, fontWeight: 600, color: m.k === 'total' ? '#fff' : 'var(--slate-600)' }}>
-          {m.k !== 'total' && <span style={{ width: 7, height: 7, borderRadius: 2, background: m.color }} />}
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 9px', background: 'var(--navy)', border: '1px solid var(--navy)', borderRadius: 'var(--r-sm)', fontSize: 11.5, fontWeight: 600, color: '#fff' }}>
+        Total <b style={{ fontVariantNumeric: 'tabular-nums' }}>{(+v.total).toLocaleString('es-CL')}</b>
+      </span>
+      {DB.VOL_CATS.filter(m => v[m.k]).map(m => (
+        <span key={m.k} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 9px', background: 'var(--surface-2)', border: '1px solid var(--line-soft)', borderRadius: 'var(--r-sm)', fontSize: 11.5, fontWeight: 600, color: 'var(--slate-600)' }}>
+          <span style={{ width: 7, height: 7, borderRadius: 2, background: m.color }} />
           {m.label}
-          <b style={{ color: m.k === 'total' ? '#fff' : 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}>{(+v[m.k] || 0).toLocaleString('es-CL')}</b>
+          <b style={{ color: 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}>{(+v[m.k]).toLocaleString('es-CL')}</b>
+          <span style={{ color: 'var(--slate-400)', fontVariantNumeric: 'tabular-nums' }}>{fmtPct(DB.volPct(v, m.k))}</span>
         </span>
       ))}
       {v.manual && <span className="badge badge-amber">Ajustado</span>}
@@ -45,36 +43,48 @@ function VolumeStrip({ t, sub }) {
 function VolumeEditor({ contenido, value, onChange }) {
   const auto = useMemo(() => DB.parseVolume(contenido), [contenido]);
   const manual = !!(value && value.manual);
-  const shown = manual ? value : auto;
+  const shown = manual ? DB.volumenFor({ volumen: value }) : auto;
   const setField = (k) => (e) => {
     const n = Math.max(0, parseInt(e.target.value, 10) || 0);
-    onChange({ total: auto.total, tecnica: auto.tecnica, pateo: auto.pateo, brazos: auto.brazos, velocidad: auto.velocidad, ...(manual ? value : {}), [k]: n, manual: true });
+    const base = {};
+    DB.VOL_KEYS.forEach(key => { base[key] = shown[key] || 0; });
+    base[k] = n;
+    base.total = DB.VOL_KEYS.reduce((a, key) => a + base[key], 0);
+    onChange({ ...base, manual: true });
   };
   return (
     <div style={{ border: '1px solid var(--line)', borderRadius: 'var(--r-md)', padding: 14, background: 'var(--surface-2)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink)' }}>Volumen de la sesión</span>
           <span className={`badge badge-${manual ? 'amber' : 'cyan'}`}>{manual ? 'Ajuste manual' : 'Cálculo automático'}</span>
         </div>
-        {manual && <button type="button" className="link-btn" onClick={() => onChange(null)} style={{ fontSize: 12, fontWeight: 600, color: 'var(--cyan-700)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>↺ Recalcular desde el contenido</button>}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+          <span style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.03em', color: 'var(--navy)' }}>Total</span>
+          <span style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--font-head)', color: 'var(--navy)', fontVariantNumeric: 'tabular-nums' }}>{fmtM(shown.total)}</span>
+        </div>
       </div>
-      <div className="m-3col" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
-        {VOL_META.map(m => (
-          <div key={m.k} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', padding: '8px 8px 9px' }}>
+      <div className="vol-grid">
+        {DB.VOL_CATS.map(m => (
+          <div key={m.k} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--r-sm)', padding: '8px 8px 9px', minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 5 }}>
-              {m.k !== 'total' && <span style={{ width: 7, height: 7, borderRadius: 2, background: m.color }} />}
-              <span style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.03em', color: m.k === 'total' ? 'var(--navy)' : 'var(--slate-500)' }}>{m.label}</span>
+              <span style={{ width: 7, height: 7, borderRadius: 2, background: m.color, flex: '0 0 auto' }} />
+              <span style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.03em', color: 'var(--slate-500)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.label}</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
               <input type="number" min="0" className="input" value={shown[m.k]} onChange={setField(m.k)} style={{ padding: '5px 7px', fontSize: 15, fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontFamily: 'var(--font-head)' }} />
               <span style={{ fontSize: 11, color: 'var(--slate-400)', fontWeight: 600 }}>m</span>
             </div>
+            <div style={{ marginTop: 6, height: 4, borderRadius: 2, background: 'var(--line-soft)', overflow: 'hidden' }}>
+              <div style={{ width: `${Math.min(100, DB.volPct(shown, m.k))}%`, height: '100%', background: m.color }} />
+            </div>
+            <div style={{ marginTop: 4, fontSize: 11.5, fontWeight: 700, color: 'var(--slate-600)', fontVariantNumeric: 'tabular-nums' }}>{fmtPct(DB.volPct(shown, m.k))} <span style={{ fontWeight: 500, color: 'var(--slate-400)' }}>del total</span></div>
           </div>
         ))}
       </div>
+      {manual && <button type="button" className="link-btn" onClick={() => onChange(null)} style={{ marginTop: 10, fontSize: 12, fontWeight: 600, color: 'var(--cyan-700)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>↺ Recalcular desde el contenido</button>}
       <p style={{ margin: '10px 0 0', fontSize: 11.5, color: 'var(--slate-500)', lineHeight: 1.5 }}>
-        Se calcula desde el contenido (ej. <code>12×25 sprint</code>, <code>3×(400 libre + 100 patada)</code>). Edita cualquier valor para ajustarlo manualmente. La velocidad cuenta solo tramos de ≤25 m.
+        Se calcula desde los títulos de cada set: <code>PRE SET : 500m</code>, <code>SET 2000m</code>, <code>SET TECNICO : 500m</code>, <code>SET PIERNAS x2 500m</code> (= 1.000 m). Sets: técnico, piernas, brazos, sub acuático, virajes y salidas; un <code>SET</code> sin nombre cuenta como set principal. Las líneas de detalle no se suman.
       </p>
     </div>
   );
@@ -98,12 +108,12 @@ function TrainingForm({ initial, presetDate, onSave, onClose }) {
           <Field label="Actividad"><select className="select" value={f.actividad || 'natacion'} onChange={set('actividad')}>{DB.ACTIVIDADES.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}</select></Field>
         </div>
         <div className="field-grid-3">
-          <Field label="Tipo"><select className="select" value={f.tipo} onChange={set('tipo')}>{TR_TYPES.map(t => <option key={t}>{t}</option>)}</select></Field>
+          <Field label="Ritmo"><select className="select" value={f.tipo} onChange={set('tipo')}>{(TR_TYPES.includes(f.tipo) ? TR_TYPES : [f.tipo, ...TR_TYPES]).map(t => <option key={t}>{t}</option>)}</select></Field>
           <Field label="Duración (min)"><input type="number" className="input" value={f.duracion} onChange={set('duracion')} /></Field>
           <Field label="Ubicación"><input className="input" value={f.ubicacion} onChange={set('ubicacion')} /></Field>
         </div>
         <Field label="Contenido de la sesión" hint="Una serie por línea. Visible para todos los nadadores del grupo.">
-          <textarea className="textarea" style={{ minHeight: 140, fontFamily: 'ui-monospace, monospace', fontSize: 13, lineHeight: 1.6 }} value={f.contenido} onChange={set('contenido')} placeholder={'400 nado suave + movilidad\n8×50 viraje con 5 ondas\n10×100 libre @2:20…'} />
+          <textarea className="textarea" style={{ minHeight: 140, fontFamily: 'ui-monospace, monospace', fontSize: 13, lineHeight: 1.6 }} value={f.contenido} onChange={set('contenido')} placeholder={'PRE SET : 500m\n400 suave + 100 patada\nSET PIERNAS x2 500m\n10×50 patada con tabla\nSET 2000m\n20×100 libre @1:40…'} />
         </Field>
         <VolumeEditor contenido={f.contenido} value={f.volumen} onChange={(v) => setF(s => ({ ...s, volumen: v }))} />
       </div>
@@ -188,14 +198,14 @@ function TrainingImport({ onClose }) {
         const ws = wb.Sheets[wb.SheetNames[0]];
         const raw = XLSX.utils.sheet_to_json(ws, { defval: '' });
         const parsed = raw.map(r => {
-          const tipo = String(r['tipo'] || 'Técnica').trim();
+          const tipo = String(r['tipo'] || '50m').trim();
           const grupo = DB.normalizeGroup(String(r['grupo'] || 'G1').trim().toUpperCase().replace(/^GRUPO\s*/, 'G'));
           return {
             fecha: parseExcelDate(r['fecha*'] || r['fecha']),
             titulo: String(r['titulo*'] || r['titulo'] || '').trim(),
             actividad: /f[ií]sica|prep/i.test(String(r['actividad'] || '')) ? 'fisica' : 'natacion',
             grupo: ['G1', 'G2', 'TODOS'].includes(grupo) ? grupo : 'G1',
-            tipo: VALID_TYPES.has(tipo) ? tipo : 'Técnica',
+            tipo: VALID_TYPES.has(tipo) ? tipo : '50m',
             duracion: Math.max(1, parseInt(r['duracion'], 10) || 90),
             ubicacion: String(r['ubicacion'] || 'Piscina Municipal de Lo Prado').trim(),
             contenido: String(r['contenido'] || '').replace(/\\n/g, '\n').trim(),
@@ -233,7 +243,7 @@ function TrainingImport({ onClose }) {
               <div style={{ fontSize: 12.5, color: 'var(--cyan-600)', lineHeight: 1.5 }}>
                 Completa los entrenamientos. Las columnas con <strong>*</strong> son obligatorias.<br />
                 La fecha debe ser <code>YYYY-MM-DD</code>. Actividad: <code>natacion</code> o <code>fisica</code>. Grupo: <code>G1</code>, <code>G2</code> o <code>TODOS</code>.<br />
-                Tipos válidos: {TR_TYPES.join(', ')}.
+                Ritmos válidos (columna tipo): {TR_TYPES.join(', ')}.
               </div>
             </div>
             <Button variant="ghost" icon="download" size="sm" onClick={downloadTemplate}>Plantilla .xlsx</Button>

@@ -14,7 +14,7 @@
 import { supabase, hasSupabaseConfig } from './supabase.js';
 import {
   PROTOCOLS, METRIC_TYPES, CAT_BY_YEAR,
-  categoryFor, ageFor, levelFor, parseVolume, volumenFor, uid,
+  categoryFor, ageFor, levelFor, parseVolume, volumenFor, volPct, VOL_CATS, VOL_KEYS, uid,
   PRUEBAS, EVENT_KEY, GOLD_CATS, DEFAULT_GOLD_TIMES,
   parseSwimTime, goldTimeFor as _goldTimeFor, proximityPct,
   emptyState, seed, GROUPS, groupLabel, normalizeGroup, normalizeGroups,
@@ -305,7 +305,7 @@ function teardown() {
 export const DB = {
   PROTOCOLS, METRIC_TYPES, CAT_BY_YEAR, PRUEBAS, EVENT_KEY, GOLD_CATS, DEFAULT_GOLD_TIMES, GROUPS, groupLabel, normalizeGroup,
   ACTIVIDADES, actividadOf, actividadLabel, attMap, monthAttendance,
-  categoryFor, ageFor, levelFor, parseVolume, volumenFor, uid, parseSwimTime, proximityPct,
+  categoryFor, ageFor, levelFor, parseVolume, volumenFor, volPct, VOL_CATS, VOL_KEYS, uid, parseSwimTime, proximityPct,
   goldTimeFor(prueba, genero, fechaNac) { return _goldTimeFor(prueba, genero, fechaNac, state.goldTimes); },
   updateGoldTime(cat, genero, key, time) {
     if (!state.goldTimes[cat]) state.goldTimes[cat] = {};
