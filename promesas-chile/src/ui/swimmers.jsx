@@ -295,6 +295,7 @@ function SwimmersView() {
   const toast = useToast();
   const [group, setGroup] = useState('G1');
   const [q, setQ] = useState('');
+  const [cat, setCat] = useState('');
   const [editing, setEditing] = useState(null);   // swimmer or 'new'
   const [detail, setDetail] = useState(null);
   const [removing, setRemoving] = useState(null);
@@ -304,9 +305,19 @@ function SwimmersView() {
   const list = useMemo(() => {
     return st.swimmers
       .filter(s => s.group === group)
+      .filter(s => !cat || DB.categoryFor(s.fechaNacimiento) === cat)
       .filter(s => !q || s.nombre.toLowerCase().includes(q.toLowerCase()) || s.rut.includes(q))
       .sort((a, b) => a.nombre.localeCompare(b.nombre));
-  }, [st.swimmers, group, q]);
+  }, [st.swimmers, group, q, cat]);
+
+  /* Categorías presentes en el grupo, de menor a mayor edad, con su cantidad. */
+  const catOptions = useMemo(() => {
+    const order = [...Object.keys(DB.CAT_BY_YEAR).sort((a, b) => b - a).map(y => DB.CAT_BY_YEAR[y]), 'Mayores', '—'];
+    const n = {};
+    st.swimmers.filter(s => s.group === group).forEach(s => { const c = DB.categoryFor(s.fechaNacimiento); n[c] = (n[c] || 0) + 1; });
+    return order.filter(c => n[c]).map(c => ({ c, n: n[c] }));
+  }, [st.swimmers, group]);
+  useEffect(() => { if (cat && !catOptions.some(o => o.c === cat)) setCat(''); }, [catOptions, cat]);
 
   const counts = useMemo(() => ({
     G1: st.swimmers.filter(s => s.group === 'G1').length,
@@ -354,6 +365,10 @@ function SwimmersView() {
           <Icon name="search" />
           <input className="input" placeholder="Buscar por nombre o RUT…" value={q} onChange={e => setQ(e.target.value)} />
         </div>
+        <select className="select" value={cat} onChange={e => setCat(e.target.value)} style={{ width: 'auto', minWidth: 170 }} aria-label="Filtrar por categoría">
+          <option value="">Todas las categorías</option>
+          {catOptions.map(o => <option key={o.c} value={o.c}>{o.c === '—' ? 'Sin categoría' : o.c} · {o.n}</option>)}
+        </select>
         <div style={{ flex: 1 }} />
         <Button variant="ghost" icon="doc" onClick={() => setShowReport(true)}>Generar PDF</Button>
         <Button variant="ghost" icon="upload" onClick={() => setImporting(true)}>Importar Excel</Button>
@@ -363,7 +378,7 @@ function SwimmersView() {
       <div className="card">
         {list.length === 0 ? (
           <Empty icon="users" title="Sin nadadores" action={<Button icon="plus" onClick={() => setEditing('new')}>Agregar el primero</Button>}>
-            No hay nadadores en este grupo todavía.
+            {(q || cat) ? 'Ningún nadador coincide con la búsqueda o la categoría seleccionada.' : 'No hay nadadores en este grupo todavía.'}
           </Empty>
         ) : (
           <table className="tbl">
