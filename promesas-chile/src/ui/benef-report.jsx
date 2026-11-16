@@ -6,11 +6,12 @@ import { fmtDate, fmtDateLong, todayISO } from './components.jsx';
 /* ============================================================
    benef-report.jsx — Ficha de nadadores (Grupo 1 / Grupo 2) en PDF (A4)
    ============================================================ */
-function SwimmerGroupReport({ st, list, group }) {
+function SwimmerGroupReport({ st, list, group, categoria }) {
   const coach = st.coach;
   const logoUrl = '/logo.png';
-  const doctype = `Ficha de Nadadores · ${DB.groupLabel(group)}`;
-  const groupLabel = `nadadores del ${DB.groupLabel(group)}`;
+  const catLabel = categoria ? (categoria === '—' ? 'Sin categoría' : categoria) : '';
+  const doctype = `Ficha de Nadadores · ${DB.groupLabel(group)}${catLabel ? ` · ${catLabel}` : ''}`;
+  const groupLabel = `nadadores del ${DB.groupLabel(group)}${catLabel ? ` (${catLabel})` : ''}`;
   const emptyMsg = `Sin ${groupLabel} registrados.`;
 
   const hombres = list.filter(s => s.genero === 'M').length;

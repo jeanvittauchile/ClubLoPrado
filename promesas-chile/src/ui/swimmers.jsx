@@ -338,7 +338,10 @@ function SwimmersView() {
   };
 
   if (showReport) {
-    const reportList = st.swimmers.filter(s => s.group === group).sort((a, b) => a.nombre.localeCompare(b.nombre));
+    const reportList = st.swimmers
+      .filter(s => s.group === group)
+      .filter(s => !cat || DB.categoryFor(s.fechaNacimiento) === cat)
+      .sort((a, b) => a.nombre.localeCompare(b.nombre));
     return (
       <div>
         <div className="toolbar no-print">
@@ -348,7 +351,7 @@ function SwimmersView() {
           <Button icon="download" onClick={() => window.print()}>Descargar PDF</Button>
         </div>
         <div style={{ overflowX: 'auto' }}>
-          <SwimmerGroupReport st={st} list={reportList} group={group} />
+          <SwimmerGroupReport st={st} list={reportList} group={group} categoria={cat} />
         </div>
       </div>
     );
