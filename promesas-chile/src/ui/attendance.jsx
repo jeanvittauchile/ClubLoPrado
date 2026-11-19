@@ -147,8 +147,9 @@ function AttendanceView() {
                         const on = isPresent(a.id, s.id, d);
                         const isToday = cellKey(d) === todayStr;
                         const isTr = trainingDays[a.id].has(d);
+                        const off = !DB.isScheduled(group, a.id, cellKey(d));
                         return (
-                          <td key={d} className={`att-cell ${isTr ? ui.trCell : ''} ${isToday ? 'is-today' : ''}`}>
+                          <td key={d} className={`att-cell ${isTr && !off ? ui.trCell : ''} ${off ? 'off-sched' : ''} ${isToday ? 'is-today' : ''}`}>
                             <button className={`att-box ${ui.box} ${on ? 'on' : ''}`} onClick={() => DB.toggleAttendance(s.id, cellKey(d), a.id)} aria-label={`${a.label} · día ${d}`} title={`${a.label} · día ${d}`}>
                               {on && <Icon name="check" />}
                             </button>
@@ -188,6 +189,10 @@ function AttendanceView() {
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><span style={{ width: 14, height: 14, borderRadius: 4, border: '1.5px solid var(--line)', display: 'inline-block' }} /> Ausente</span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><span style={{ width: 14, height: 14, borderRadius: 4, background: 'var(--cyan-050)', border: '1px solid var(--cyan-100)', display: 'inline-block' }} /> Natación programada</span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><span style={{ width: 14, height: 14, borderRadius: 4, background: '#f5f1fd', border: '1px solid #e2d9f7', display: 'inline-block' }} /> P. física programada</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><span style={{ width: 14, height: 14, borderRadius: 4, border: '1.5px dashed var(--line)', opacity: .5, display: 'inline-block' }} /> Fuera del calendario del grupo (no cuenta para el %)</span>
+      </p>
+      <p style={{ fontSize: 12, color: 'var(--slate-400)', marginTop: 6 }}>
+        Calendario: Grupo 1 entrena martes, jueves y sábado. Grupo 2 entrena de lunes a sábado; el lunes solo P. física, miércoles y sábado solo natación.
       </p>
     </div>
   );

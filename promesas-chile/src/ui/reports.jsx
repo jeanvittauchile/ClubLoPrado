@@ -6,6 +6,7 @@ import {
   MONTHS, WD_SHORT, fmtDate, fmtDateLong, todayISO, fmtTime, parseTime,
 } from './components.jsx';
 import { EvalReport } from './eval-report.jsx';
+import { VolumeReport } from './vol-report.jsx';
 
 
 /* ============================================================
@@ -40,6 +41,7 @@ function ReportsView() {
         <div className="tabs">
           <button className={`tab ${tipo === 'mensual' ? 'active' : ''}`} onClick={() => setTipo('mensual')}>Informe mensual</button>
           <button className={`tab ${tipo === 'evaluaciones' ? 'active' : ''}`} onClick={() => setTipo('evaluaciones')}>Resultados de evaluaciones</button>
+          <button className={`tab ${tipo === 'volumen' ? 'active' : ''}`} onClick={() => setTipo('volumen')}>Volumen por set</button>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', padding: 4 }}>
           <button className="btn-icon" onClick={() => shiftMonth(-1)}><Icon name="chevL" /></button>
@@ -53,6 +55,8 @@ function ReportsView() {
 
       {tipo === 'evaluaciones' ? (
         <EvalReport st={st} ym={ym} />
+      ) : tipo === 'volumen' ? (
+        <VolumeReport st={st} ym={ym} />
       ) : (
         <div className="report-grid" style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 22, alignItems: 'start' }}>
           <div className="card card-pad no-print" style={{ position: 'sticky', top: 88 }}>
@@ -86,6 +90,8 @@ function ReportPaper({ st, ym, yy, mm, nadadores, statsN, statsF, activeDaysCoun
     DB.VOL_KEYS.forEach(k => { a[k] += (+v[k] || 0); }); return a;
   }, DB.VOL_KEYS.reduce((a, k) => { a[k] = 0; return a; }, { total: 0 }));
   const nM = (n) => (+n || 0).toLocaleString('es-CL');
+  // Solo los sets con metros en el mes, para que la tabla quepa en A4.
+  const usedCats = DB.VOL_CATS.filter(c => monthVol[c.k] > 0);
 
   return (
     <div className="report-viewer">
@@ -161,17 +167,17 @@ function ReportPaper({ st, ym, yy, mm, nadadores, statsN, statsF, activeDaysCoun
               </tr>
             </thead>
             <tbody>
-              {statsN.rows.map(({ s, present, pct }, i) => {
+              {statsN.rows.map(({ s, present, possible, pct }, i) => {
                 const f = statsF.rows[i];
                 const color = (p) => (p >= 80 ? '#1FA971' : p >= 60 ? '#E0A93B' : '#E1543B');
                 return (
                   <tr key={s.id}>
                     <td className="strong">{s.nombre}</td>
                     <td>{DB.categoryFor(s.fechaNacimiento)}</td>
-                    <td className="num">{present}/{statsN.activeDays.length}</td>
-                    <td className="num strong" style={{ color: statsN.activeDays.length ? color(pct) : undefined }}>{statsN.activeDays.length ? `${pct}%` : '—'}</td>
-                    <td className="num">{f.present}/{statsF.activeDays.length}</td>
-                    <td className="num strong" style={{ color: statsF.activeDays.length ? color(f.pct) : undefined }}>{statsF.activeDays.length ? `${f.pct}%` : '—'}</td>
+                    <td className="num">{present}/{possible}</td>
+                    <td className="num strong" style={{ color: possible ? color(pct) : undefined }}>{possible ? `${pct}%` : '—'}</td>
+                    <td className="num">{f.present}/{f.possible}</td>
+                    <td className="num strong" style={{ color: f.possible ? color(f.pct) : undefined }}>{f.possible ? `${f.pct}%` : '—'}</td>
                   </tr>
                 );
               })}
@@ -208,16 +214,20 @@ function ReportPaper({ st, ym, yy, mm, nadadores, statsN, statsF, activeDaysCoun
         {/* Volumen de entrenamiento */}
         <div className="rp-section">
           <h2 className="rp-h">Volumen de entrenamiento del mes</h2>
-          <div className="rp-stats" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
-            {VOLM.map(m => (
-              <div key={m.k} className={`rp-stat${m.k === 'total' ? ' rp-stat-hl' : ''}`} style={{ borderTop: m.k === 'total' ? undefined : `3px solid ${m.color}` }}>
-                <div className="rp-stat-v">{nM(monthVol[m.k])}</div>
-                <div className="rp-stat-l">{m.label}{m.k === 'total' ? ' (mts)' : ''}</div>
+          <div className="rp-stats" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+            <div className="rp-stat rp-stat-hl">
+              <div className="rp-stat-v">{nM(monthVol.total)}</div>
+              <div className="rp-stat-l">Total (mts)</div>
+            </div>
+            {usedCats.map(c => (
+              <div key={c.k} className="rp-stat" style={{ borderTop: `3px solid ${c.color}` }}>
+                <div className="rp-stat-v">{nM(monthVol[c.k])}</div>
+                <div className="rp-stat-l">{c.label} · {DB.volPct(monthVol, c.k).toLocaleString('es-CL')}%</div>
               </div>
             ))}
           </div>
           <p style={{ margin: '10px 0 0', fontSize: 10.5, color: 'var(--slate-500)', lineHeight: 1.5 }}>
-            Metros consolidados de {monthTrainings.length} {monthTrainings.length === 1 ? 'sesión' : 'sesiones'}. Técnica, pateo, brazos y velocidad son subconjuntos del total; el resto corresponde a nado continuo y calentamiento/vuelta a la calma.
+            Metros consolidados de {monthTrainings.length} {monthTrainings.length === 1 ? 'sesión' : 'sesiones'}. El total es la suma de los bloques (SET) de cada entrenamiento; el porcentaje indica la participación de cada bloque en el volumen del mes.
           </p>
         </div>
 
@@ -283,7 +293,7 @@ function ReportPaper({ st, ym, yy, mm, nadadores, statsN, statsF, activeDaysCoun
                   <th>Ritmo</th>
                   <th className="num">Min</th>
                   <th className="num">Total</th>
-                  {DB.VOL_CATS.map(c => <th key={c.k} className="num">{c.short}</th>)}
+                  {usedCats.map(c => <th key={c.k} className="num">{c.short}</th>)}
                 </tr>
               </thead>
               <tbody>
@@ -294,7 +304,7 @@ function ReportPaper({ st, ym, yy, mm, nadadores, statsN, statsF, activeDaysCoun
                     <td>{t.tipo}</td>
                     <td className="num">{t.duracion}</td>
                     <td className="num strong">{nM(v.total)}</td>
-                    {DB.VOL_CATS.map(c => <td key={c.k} className="num">{nM(v[c.k])}</td>)}
+                    {usedCats.map(c => <td key={c.k} className="num">{nM(v[c.k])}</td>)}
                   </tr>
                 ))}
               </tbody>
@@ -302,12 +312,12 @@ function ReportPaper({ st, ym, yy, mm, nadadores, statsN, statsF, activeDaysCoun
                 <tr>
                   <td className="strong" colSpan={4}>Consolidado del mes</td>
                   <td className="num strong">{nM(monthVol.total)}</td>
-                  {DB.VOL_CATS.map(c => <td key={c.k} className="num strong">{nM(monthVol[c.k])}</td>)}
+                  {usedCats.map(c => <td key={c.k} className="num strong">{nM(monthVol[c.k])}</td>)}
                 </tr>
                 <tr>
                   <td colSpan={4}>% del volumen del mes</td>
                   <td className="num">100%</td>
-                  {DB.VOL_CATS.map(c => <td key={c.k} className="num">{DB.volPct(monthVol, c.k).toLocaleString('es-CL')}%</td>)}
+                  {usedCats.map(c => <td key={c.k} className="num">{DB.volPct(monthVol, c.k).toLocaleString('es-CL')}%</td>)}
                 </tr>
               </tfoot>
             </table>

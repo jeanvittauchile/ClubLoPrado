@@ -47,7 +47,7 @@ export function levelFor(protocol, avgTime) {
      SET TECNICO : 500m        → técnica
      SET PIERNAS x2 500m       → piernas (2 × 500 = 1.000 m)
    Bloques: pre set, principal, técnico, piernas, brazos, sub acuático,
-   virajes y salidas. El total es la suma de todos los bloques. Las líneas
+   virajes, salidas, eficiencia, hipoxia, remoción y control. El total es la suma de todos los bloques. Las líneas
    que no son títulos (detalle de las series) no se suman. */
 export const VOL_CATS = [
   { k: 'preset', label: 'Pre set', short: 'Pre set', color: '#7C8BA1' },
@@ -58,6 +58,10 @@ export const VOL_CATS = [
   { k: 'subacuatico', label: 'Set sub acuático', short: 'Sub.', color: '#6C5CE7' },
   { k: 'virajes', label: 'Set virajes', short: 'Viraj.', color: '#D4A017' },
   { k: 'salidas', label: 'Set salidas', short: 'Salid.', color: '#E1543B' },
+  { k: 'eficiencia', label: 'Set eficiencia', short: 'Efic.', color: '#2A9D8F' },
+  { k: 'hipoxia', label: 'Set hipoxia', short: 'Hipox.', color: '#B5179E' },
+  { k: 'remocion', label: 'Set remoción', short: 'Remoc.', color: '#94A35A' },
+  { k: 'control', label: 'Set control', short: 'Control', color: '#8D6E63' },
 ];
 export const VOL_KEYS = VOL_CATS.map(c => c.k);
 
@@ -74,6 +78,10 @@ function setCategory(name, isPre) {
   if (/sub\s*-?\s*acuatic/.test(name)) return 'subacuatico';
   if (/viraje/.test(name)) return 'virajes';
   if (/salida/.test(name)) return 'salidas';
+  if (/eficien/.test(name)) return 'eficiencia';
+  if (/hipox/.test(name)) return 'hipoxia';
+  if (/remoc/.test(name)) return 'remocion';
+  if (/control/.test(name)) return 'control';
   return 'principal';
 }
 
@@ -498,24 +506,55 @@ export const actividadLabel = (id) => (ACTIVIDADES.find(a => a.id === id) || ACT
 export function attMap(st, act) {
   return ((act === 'fisica' ? st.attendancePF : st.attendance) || {});
 }
-/** Estadística mensual de asistencia para una actividad. */
+/* ---------- Calendario semanal por grupo ----------
+   Días de la semana (0 = domingo … 6 = sábado) en que cada grupo tiene cada actividad.
+   Grupo 1: martes, jueves y sábado.
+   Grupo 2: lunes a sábado; lunes solo P. física, miércoles y sábado solo agua. */
+export const SCHEDULE = {
+  G1: { natacion: [2, 4, 6], fisica: [2, 4, 6] },
+  G2: { natacion: [2, 3, 4, 5, 6], fisica: [1, 2, 4, 5] },
+};
+/** ¿El grupo tiene esa actividad ese día? (grupos sin calendario: todos los días). */
+export function isScheduled(group, act, iso) {
+  const sch = SCHEDULE[normalizeGroup(group)];
+  if (!sch || !sch[act]) return true;
+  const [y, m, d] = iso.split('-').map(Number);
+  return sch[act].includes(new Date(y, m - 1, d).getDay());
+}
+
+/** Estadística mensual de asistencia para una actividad.
+   Para cada nadador, los días posibles son los días con actividad de su grupo
+   (entrenamiento registrado o alguna asistencia marcada en el grupo) que caen en
+   su calendario. Si asistió un día fuera del calendario, ese día también cuenta. */
 export function monthAttendance(st, swimmers, ym, act) {
   const map = attMap(st, act);
-  const days = new Set();
+  const key = (d) => `${ym}-${String(d).padStart(2, '0')}`;
+  const all = new Set();
+  const byGroup = {};
+  const daysOf = (g) => (byGroup[g] = byGroup[g] || new Set());
   (st.trainings || []).forEach(t => {
-    if (t.fecha && t.fecha.startsWith(ym) && actividadOf(t) === act) days.add(+t.fecha.slice(8));
+    if (!t.fecha || !t.fecha.startsWith(ym) || actividadOf(t) !== act) return;
+    const d = +t.fecha.slice(8);
+    all.add(d);
+    const g = normalizeGroup(t.grupo);
+    if (g === 'TODOS' || !g) GROUPS.forEach(x => daysOf(x.id).add(d));
+    else daysOf(g).add(d);
   });
   swimmers.forEach(s => {
     const a = map[s.id] || {};
-    Object.keys(a).forEach(k => { if (k.startsWith(ym) && a[k]) days.add(+k.slice(8)); });
+    Object.keys(a).forEach(k => {
+      if (k.startsWith(ym) && a[k]) { all.add(+k.slice(8)); daysOf(normalizeGroup(s.group)).add(+k.slice(8)); }
+    });
   });
-  const activeDays = [...days].sort((a, b) => a - b);
+  const activeDays = [...all].sort((a, b) => a - b);
   const rows = swimmers.map(s => {
     const a = map[s.id] || {};
-    const present = activeDays.filter(d => a[`${ym}-${String(d).padStart(2, '0')}`]).length;
-    return { s, present, pct: activeDays.length ? Math.round((present / activeDays.length) * 100) : 0 };
+    const g = normalizeGroup(s.group);
+    const days = [...daysOf(g)].filter(d => a[key(d)] || isScheduled(g, act, key(d))).sort((x, y) => x - y);
+    const present = days.filter(d => a[key(d)]).length;
+    return { s, present, possible: days.length, days, pct: days.length ? Math.round((present / days.length) * 100) : 0 };
   });
   const present = rows.reduce((n, r) => n + r.present, 0);
-  const possible = activeDays.length * swimmers.length;
+  const possible = rows.reduce((n, r) => n + r.possible, 0);
   return { activeDays, rows, present, possible, pct: possible ? Math.round((present / possible) * 100) : 0 };
 }

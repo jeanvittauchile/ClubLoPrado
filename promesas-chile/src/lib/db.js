@@ -18,7 +18,7 @@ import {
   PRUEBAS, EVENT_KEY, GOLD_CATS, DEFAULT_GOLD_TIMES,
   parseSwimTime, goldTimeFor as _goldTimeFor, proximityPct,
   emptyState, seed, GROUPS, groupLabel, normalizeGroup, normalizeGroups,
-  ACTIVIDADES, actividadOf, actividadLabel, attMap, monthAttendance,
+  ACTIVIDADES, actividadOf, actividadLabel, attMap, monthAttendance, SCHEDULE, isScheduled,
 } from './domain.js';
 
 const cacheKey = (userId) => `pcn_cache_v1:${userId || 'local'}`;
@@ -304,7 +304,7 @@ function teardown() {
 /* ---------- API pública (idéntica al prototipo) ---------- */
 export const DB = {
   PROTOCOLS, METRIC_TYPES, CAT_BY_YEAR, PRUEBAS, EVENT_KEY, GOLD_CATS, DEFAULT_GOLD_TIMES, GROUPS, groupLabel, normalizeGroup,
-  ACTIVIDADES, actividadOf, actividadLabel, attMap, monthAttendance,
+  ACTIVIDADES, actividadOf, actividadLabel, attMap, monthAttendance, SCHEDULE, isScheduled,
   categoryFor, ageFor, levelFor, parseVolume, volumenFor, volPct, VOL_CATS, VOL_KEYS, uid, parseSwimTime, proximityPct,
   goldTimeFor(prueba, genero, fechaNac) { return _goldTimeFor(prueba, genero, fechaNac, state.goldTimes); },
   updateGoldTime(cat, genero, key, time) {

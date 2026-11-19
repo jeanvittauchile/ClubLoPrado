@@ -84,7 +84,7 @@ function VolumeEditor({ contenido, value, onChange }) {
       </div>
       {manual && <button type="button" className="link-btn" onClick={() => onChange(null)} style={{ marginTop: 10, fontSize: 12, fontWeight: 600, color: 'var(--cyan-700)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>↺ Recalcular desde el contenido</button>}
       <p style={{ margin: '10px 0 0', fontSize: 11.5, color: 'var(--slate-500)', lineHeight: 1.5 }}>
-        Se calcula desde los títulos de cada set: <code>PRE SET : 500m</code>, <code>SET 2000m</code>, <code>SET TECNICO : 500m</code>, <code>SET PIERNAS x2 500m</code> (= 1.000 m). Sets: técnico, piernas, brazos, sub acuático, virajes y salidas; un <code>SET</code> sin nombre cuenta como set principal. Las líneas de detalle no se suman.
+        Se calcula desde los títulos de cada set: <code>PRE SET : 500m</code>, <code>SET 2000m</code>, <code>SET TECNICO : 500m</code>, <code>SET PIERNAS x2 500m</code> (= 1.000 m). Sets: técnico, piernas, brazos, sub acuático, virajes, salidas, eficiencia, hipoxia, remoción y control; un <code>SET</code> sin nombre cuenta como set principal. Las líneas de detalle no se suman.
       </p>
     </div>
   );
