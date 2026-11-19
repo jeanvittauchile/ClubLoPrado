@@ -192,7 +192,7 @@ function AttendanceView() {
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><span style={{ width: 14, height: 14, borderRadius: 4, border: '1.5px dashed var(--line)', opacity: .5, display: 'inline-block' }} /> Fuera del calendario del grupo (no cuenta para el %)</span>
       </p>
       <p style={{ fontSize: 12, color: 'var(--slate-400)', marginTop: 6 }}>
-        Calendario: Grupo 1 entrena martes, jueves y sábado. Grupo 2 entrena de lunes a sábado; el lunes solo P. física, miércoles y sábado solo natación.
+        Calendario: Grupo 1: martes y jueves natación y P. física, sábado solo natación. Grupo 2 entrena de lunes a sábado; el lunes solo P. física, miércoles y sábado solo natación.
       </p>
     </div>
   );

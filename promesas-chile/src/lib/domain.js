@@ -508,10 +508,10 @@ export function attMap(st, act) {
 }
 /* ---------- Calendario semanal por grupo ----------
    Días de la semana (0 = domingo … 6 = sábado) en que cada grupo tiene cada actividad.
-   Grupo 1: martes, jueves y sábado.
+   Grupo 1: martes y jueves natación y P. física; sábado solo agua.
    Grupo 2: lunes a sábado; lunes solo P. física, miércoles y sábado solo agua. */
 export const SCHEDULE = {
-  G1: { natacion: [2, 4, 6], fisica: [2, 4, 6] },
+  G1: { natacion: [2, 4, 6], fisica: [2, 4] },
   G2: { natacion: [2, 3, 4, 5, 6], fisica: [1, 2, 4, 5] },
 };
 /** ¿El grupo tiene esa actividad ese día? (grupos sin calendario: todos los días). */
