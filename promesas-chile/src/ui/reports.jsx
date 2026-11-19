@@ -167,8 +167,13 @@ function ReportPaper({ st, ym, yy, mm, nadadores, statsN, statsF, activeDaysCoun
               </tr>
             </thead>
             <tbody>
-              {statsN.rows.map(({ s, present, possible, pct }, i) => {
+              {statsN.rows.map((n, i) => {
+                // Asistencia combinada (natación + P. física) para ordenar de mayor a menor.
                 const f = statsF.rows[i];
+                const pres = n.present + f.present, poss = n.possible + f.possible;
+                return { n, f, pres, rate: poss ? pres / poss : -1 };
+              }).sort((a, b) => b.rate - a.rate || b.pres - a.pres || a.n.s.nombre.localeCompare(b.n.s.nombre))
+              .map(({ n: { s, present, possible, pct }, f }) => {
                 const color = (p) => (p >= 80 ? '#1FA971' : p >= 60 ? '#E0A93B' : '#E1543B');
                 return (
                   <tr key={s.id}>
