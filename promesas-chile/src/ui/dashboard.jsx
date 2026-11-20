@@ -39,13 +39,12 @@ function Dashboard({ go }) {
     : groupsToday.size === 0 ? 'Sin entrenamiento hoy · todos los nadadores'
     : allToday ? 'Entrenan todos los grupos'
     : `Entrena hoy: ${[...groupsToday].filter(g => g !== 'TODOS').sort().map(g => DB.groupLabel(g)).join(' y ')}`;
-  const presentToday = todayList.filter(isPresent).length;
 
   // tasa de asistencia del mes por actividad
   const statsN = DB.monthAttendance(st, nadadores, ym, 'natacion');
   const statsF = DB.monthAttendance(st, nadadores, ym, 'fisica');
-  const presN = todayList.filter(s => isPresentIn(s, 'natacion')).length;
-  const presF = todayList.filter(s => isPresentIn(s, 'fisica')).length;
+  const presN = nadadores.filter(s => isPresentIn(s, 'natacion')).length;
+  const presF = nadadores.filter(s => isPresentIn(s, 'fisica')).length;
 
   const monthEvals = st.evaluations.filter(e => e.fecha.startsWith(ym));
   const recentEvals = st.evaluations.slice().sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 4);
@@ -58,7 +57,8 @@ function Dashboard({ go }) {
     { label: 'Nadadores', value: nadadores.length, icon: 'users', bg: 'var(--cyan-050)', fg: 'var(--cyan-700)', sub: `${g1.length} Grupo 1 · ${g2.length} Grupo 2` },
     { label: 'Asistencia del mes · Natación', value: statsN.pct + '%', icon: 'wave', bg: 'var(--green-bg)', fg: 'var(--green)', sub: `${statsN.present} asistencias` },
     { label: 'Asistencia del mes · P. física', value: statsF.pct + '%', icon: 'trend', bg: '#efeafb', fg: '#7B5BD6', sub: `${statsF.present} asistencias` },
-    { label: 'Presentes hoy', value: `${presentToday}/${todayList.length}`, icon: 'checkSquare', bg: 'var(--amber-bg)', fg: 'var(--amber)', sub: `Natación ${presN} · P. física ${presF}` },
+    { label: 'Presentes hoy', value: `${nadadores.filter(isPresent).length}/${nadadores.length}`, icon: 'checkSquare', bg: 'var(--amber-bg)', fg: 'var(--amber)',
+      sub: <>Grupo 1 {g1.filter(isPresent).length}/{g1.length} · Grupo 2 {g2.filter(isPresent).length}/{g2.length}<br />Natación {presN} · P. física {presF}</> },
   ];
 
   return (
