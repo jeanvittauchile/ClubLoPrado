@@ -20,18 +20,25 @@ function Dashboard({ go }) {
   const g2 = st.swimmers.filter(s => s.group === 'G2');
   const todayTrainings = st.trainings.filter(t => t.fecha === today).sort((a, b) => a.titulo.localeCompare(b.titulo));
 
-  // asistencia de hoy: sólo los grupos que entrenan hoy (sin entrenamiento → todos)
+  // asistencia de hoy: los grupos que entrenan hoy según el calendario semanal
+  // o un entrenamiento registrado (sin ninguno → todos). "Ver todos" muestra a todos.
+  const [verTodos, setVerTodos] = useState(false);
   const isPresentIn = (s, act) => { const m = DB.attMap(st, act); return !!(m[s.id] && m[s.id][today]); };
   const isPresent = (s) => isPresentIn(s, 'natacion') || isPresentIn(s, 'fisica');
   const groupsToday = new Set(todayTrainings.map(t => t.grupo));
+  DB.GROUPS.forEach(g => {
+    if (DB.ACTIVIDADES.some(a => DB.isScheduled(g.id, a.id, today))) groupsToday.add(g.id);
+  });
   const allToday = groupsToday.size === 0 || groupsToday.has('TODOS');
+  const knownGroup = (s) => DB.GROUPS.some(g => g.id === s.group);
   const todayList = nadadores
-    .filter(s => allToday || groupsToday.has(s.group) || isPresent(s))
+    .filter(s => verTodos || allToday || groupsToday.has(s.group) || !knownGroup(s) || isPresent(s))
     .sort((a, b) => a.nombre.localeCompare(b.nombre));
-  const todayLabel = groupsToday.size === 0
-    ? 'Sin entrenamiento hoy · todos los nadadores'
+  const hidden = nadadores.length - todayList.length;
+  const todayLabel = verTodos ? 'Mostrando todos los nadadores'
+    : groupsToday.size === 0 ? 'Sin entrenamiento hoy · todos los nadadores'
     : allToday ? 'Entrenan todos los grupos'
-    : `Entrena hoy: ${[...groupsToday].sort().map(g => DB.groupLabel(g)).join(' y ')}`;
+    : `Entrena hoy: ${[...groupsToday].filter(g => g !== 'TODOS').sort().map(g => DB.groupLabel(g)).join(' y ')}`;
   const presentToday = todayList.filter(isPresent).length;
 
   // tasa de asistencia del mes por actividad
@@ -98,6 +105,9 @@ function Dashboard({ go }) {
             <div className="card-head">
               <div className="ico"><Icon name="checkSquare" /></div>
               <div style={{ flex: 1 }}><h3>Asistencia de hoy</h3><div style={{ fontSize: 12.5, color: 'var(--slate-500)' }}>{todayLabel} — marca natación, preparación física o ambas</div></div>
+              {(hidden > 0 || verTodos) && (
+                <Button variant="ghost" size="sm" onClick={() => setVerTodos(v => !v)}>{verTodos ? 'Solo los de hoy' : `Ver todos (+${hidden})`}</Button>
+              )}
               <Button variant="ghost" size="sm" onClick={() => go('attendance')}>Panel mensual</Button>
             </div>
             <div className="card-pad" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
