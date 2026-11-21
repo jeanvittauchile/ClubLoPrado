@@ -18,7 +18,7 @@ import {
   PRUEBAS, EVENT_KEY, GOLD_CATS, DEFAULT_GOLD_TIMES,
   parseSwimTime, goldTimeFor as _goldTimeFor, proximityPct,
   emptyState, seed, GROUPS, groupLabel, normalizeGroup, normalizeGroups,
-  ACTIVIDADES, actividadOf, actividadLabel, attMap, monthAttendance, SCHEDULE, isScheduled,
+  ACTIVIDADES, actividadOf, actividadLabel, attMap, monthAttendance, dailyAttendance, SCHEDULE, isScheduled, localISO,
 } from './domain.js';
 
 const cacheKey = (userId) => `pcn_cache_v1:${userId || 'local'}`;
@@ -304,7 +304,7 @@ function teardown() {
 /* ---------- API pública (idéntica al prototipo) ---------- */
 export const DB = {
   PROTOCOLS, METRIC_TYPES, CAT_BY_YEAR, PRUEBAS, EVENT_KEY, GOLD_CATS, DEFAULT_GOLD_TIMES, GROUPS, groupLabel, normalizeGroup,
-  ACTIVIDADES, actividadOf, actividadLabel, attMap, monthAttendance, SCHEDULE, isScheduled,
+  ACTIVIDADES, actividadOf, actividadLabel, attMap, monthAttendance, dailyAttendance, SCHEDULE, isScheduled, localISO,
   categoryFor, ageFor, levelFor, parseVolume, volumenFor, volPct, VOL_CATS, VOL_KEYS, uid, parseSwimTime, proximityPct,
   goldTimeFor(prueba, genero, fechaNac) { return _goldTimeFor(prueba, genero, fechaNac, state.goldTimes); },
   updateGoldTime(cat, genero, key, time) {
@@ -335,7 +335,7 @@ export const DB = {
 
   // Nadadores
   addSwimmer(data) {
-    const s = { id: uid(), activo: true, justificacion: '', creado: new Date().toISOString().slice(0, 10), ...data };
+    const s = { id: uid(), activo: true, justificacion: '', creado: localISO(), ...data };
     state.swimmers.push(s);
     commit();
     enqueue({ type: 'upsert', table: 'swimmers', id: s.id, doc: s });
@@ -352,7 +352,7 @@ export const DB = {
   removeSwimmer(id, justificacion) {
     const s = state.swimmers.find(x => x.id === id);
     if (s) {
-      const baja = { id: uid(), swimmerId: id, nombre: s.nombre, group: s.group, justificacion: justificacion || '', fecha: new Date().toISOString().slice(0, 10) };
+      const baja = { id: uid(), swimmerId: id, nombre: s.nombre, group: s.group, justificacion: justificacion || '', fecha: localISO() };
       state.bajas.push(baja);
       state.swimmers = state.swimmers.filter(x => x.id !== id);
       delete state.attendance[id];

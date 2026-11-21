@@ -3,7 +3,7 @@ import { DB } from '../lib/db.js';
 import {
   Icon, Avatar, avatarColor, getInitials,
   useStore, useToast, Button, Modal, Field, Empty, Confirm,
-  MONTHS, WD_SHORT, fmtDate, fmtDateLong, todayISO, fmtTime, parseTime,
+  MONTHS, WD_SHORT, fmtDate, fmtDateLong, todayISO, fmtTime, parseTime, fmtAvg, fmtDayShort,
 } from './components.jsx';
 import { EvalReport } from './eval-report.jsx';
 import { VolumeReport } from './vol-report.jsx';
@@ -27,7 +27,10 @@ function ReportsView() {
   // Asistencia por actividad
   const statsN = DB.monthAttendance(st, nadadores, ym, 'natacion');
   const statsF = DB.monthAttendance(st, nadadores, ym, 'fisica');
-  const activeDaysCount = new Set([...statsN.activeDays, ...statsF.activeDays]).size;
+  // Días con actividad = días en que se tomó asistencia (natación o P. física).
+  const activeDaysCount = DB.dailyAttendance(st, nadadores, ym, 'any').days.length;
+  // Día con mejor y peor asistencia por grupo (presente en natación o P. física).
+  const byGroupDay = DB.GROUPS.map(g => ({ g, d: DB.dailyAttendance(st, nadadores.filter(s => s.group === g.id), ym, 'any') }));
 
   const monthEvals = st.evaluations.filter(e => e.fecha.startsWith(ym)).sort((a, b) => a.fecha.localeCompare(b.fecha));
   const monthTrainings = st.trainings.filter(t => t.fecha.startsWith(ym)).sort((a, b) => a.fecha.localeCompare(b.fecha));
@@ -73,7 +76,7 @@ function ReportsView() {
           </div>
 
           <div style={{ overflowX: 'auto' }}>
-            <ReportPaper {...{ st, ym, yy, mm, nadadores, statsN, statsF, activeDaysCount, monthEvals, monthTrainings, meta, logoUrl, protoById, metricMeta }} />
+            <ReportPaper {...{ st, ym, yy, mm, nadadores, statsN, statsF, activeDaysCount, byGroupDay, monthEvals, monthTrainings, meta, logoUrl, protoById, metricMeta }} />
           </div>
         </div>
       )}
@@ -82,7 +85,7 @@ function ReportsView() {
 }
 
 /* ── ReportPaper: 2 páginas A4 ── */
-function ReportPaper({ st, ym, yy, mm, nadadores, statsN, statsF, activeDaysCount, monthEvals, monthTrainings, meta, logoUrl, protoById, metricMeta }) {
+function ReportPaper({ st, ym, yy, mm, nadadores, statsN, statsF, activeDaysCount, byGroupDay, monthEvals, monthTrainings, meta, logoUrl, protoById, metricMeta }) {
   const coach = st.coach;
   const trVols = monthTrainings.map(t => ({ t, v: DB.volumenFor(t) }));
   const monthVol = trVols.reduce((a, { v }) => {
@@ -124,31 +127,35 @@ function ReportPaper({ st, ym, yy, mm, nadadores, statsN, statsF, activeDaysCoun
         {/* Resumen estadístico */}
         <div className="rp-section">
           <h2 className="rp-h">Resumen del mes</h2>
-          <div className="rp-stats">
+          <div className="rp-stats" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
             <div className="rp-stat">
               <div className="rp-stat-v">{nadadores.length}</div>
               <div className="rp-stat-l">Nadadores</div>
             </div>
             <div className="rp-stat">
-              <div className="rp-stat-v">{monthTrainings.length}</div>
-              <div className="rp-stat-l">Entrenamientos</div>
-            </div>
-            <div className="rp-stat">
               <div className="rp-stat-v">{activeDaysCount}</div>
-              <div className="rp-stat-l">Días de actividad</div>
+              <div className="rp-stat-l">Días con actividad</div>
             </div>
             <div className="rp-stat rp-stat-hl">
-              <div className="rp-stat-v">{statsN.pct}%</div>
-              <div className="rp-stat-l">Asistencia natación ({statsN.present})</div>
+              <div className="rp-stat-v">{statsN.daily.pct}%</div>
+              <div className="rp-stat-l">Asistencia natación · prom. {fmtAvg(statsN.daily.avg)}/{fmtAvg(statsN.daily.expAvg)} por día</div>
             </div>
             <div className="rp-stat rp-stat-hl">
-              <div className="rp-stat-v">{statsF.pct}%</div>
-              <div className="rp-stat-l">Asistencia prep. física ({statsF.present})</div>
+              <div className="rp-stat-v">{statsF.daily.pct}%</div>
+              <div className="rp-stat-l">Asistencia prep. física · prom. {fmtAvg(statsF.daily.avg)}/{fmtAvg(statsF.daily.expAvg)} por día</div>
             </div>
             <div className="rp-stat">
               <div className="rp-stat-v">{monthEvals.length}</div>
               <div className="rp-stat-l">Evaluaciones</div>
             </div>
+          </div>
+          <div className="rp-stats" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginTop: 10 }}>
+            {[['best', 'Mejor'], ['worst', 'Peor']].map(([k, lbl]) => byGroupDay.map(({ g, d }) => (
+              <div className="rp-stat" key={k + g.id}>
+                <div className="rp-stat-v">{d[k] ? `${d[k].n}/${d[k].exp}` : '—'}</div>
+                <div className="rp-stat-l">{lbl} asistencia {g.label}{d[k] ? ` · ${fmtDayShort(d[k].iso)}` : ''}</div>
+              </div>
+            )))}
           </div>
         </div>
 
@@ -194,11 +201,11 @@ function ReportPaper({ st, ym, yy, mm, nadadores, statsN, statsF, activeDaysCoun
             </tbody>
             <tfoot>
               <tr>
-                <td className="strong" colSpan={2}>Consolidado</td>
-                <td className="num strong">{statsN.present}/{statsN.possible}</td>
-                <td className="num strong">{statsN.pct}%</td>
-                <td className="num strong">{statsF.present}/{statsF.possible}</td>
-                <td className="num strong">{statsF.pct}%</td>
+                <td className="strong" colSpan={2}>Promedio por día</td>
+                <td className="num strong">{fmtAvg(statsN.daily.avg)}/{fmtAvg(statsN.daily.expAvg)}</td>
+                <td className="num strong">{statsN.daily.pct}%</td>
+                <td className="num strong">{fmtAvg(statsF.daily.avg)}/{fmtAvg(statsF.daily.expAvg)}</td>
+                <td className="num strong">{statsF.daily.pct}%</td>
               </tr>
             </tfoot>
           </table>

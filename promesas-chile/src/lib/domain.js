@@ -385,7 +385,7 @@ export function seed() {
   const swimmers = [...g1.map(s => mk(s, 'G1')), ...g2.map(s => mk(s, 'G2'))];
 
   const today = new Date();
-  const iso = (d) => d.toISOString().slice(0, 10);
+  const iso = (d) => localISO(d);
   const dOff = (n) => { const x = new Date(today); x.setDate(x.getDate() + n); return x; };
   const trainings = [
     { id: uid(), fecha: iso(today), titulo: 'Técnica de viraje y streamline', grupo: 'G1', tipo: 'Técnica', duracion: 90, ubicacion: 'Piscina Municipal de Lo Prado', contenido: '400 nado suave + movilidad\n8×50 viraje con 5 ondas subacuático\n10×100 libre @2:20 control de brazadas\n200 vuelta a la calma' },
@@ -396,7 +396,7 @@ export function seed() {
 
   const attendance = {};
   const g1Ids = swimmers.filter(s => s.group === 'G1').map(s => s.id);
-  const ym = today.toISOString().slice(0, 7);
+  const ym = localISO(today).slice(0, 7);
   const sessionDays = [];
   for (let d = 1; d <= today.getDate(); d++) {
     const dt = new Date(today.getFullYear(), today.getMonth(), d);
@@ -506,6 +506,12 @@ export const actividadLabel = (id) => (ACTIVIDADES.find(a => a.id === id) || ACT
 export function attMap(st, act) {
   return ((act === 'fisica' ? st.attendancePF : st.attendance) || {});
 }
+/** Fecha local (hora de Chile del dispositivo) en formato YYYY-MM-DD.
+   No usar toISOString(): esa fecha es UTC y cambia de día a las 21:00 en Chile. */
+export function localISO(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 /* ---------- Calendario semanal por grupo ----------
    Días de la semana (0 = domingo … 6 = sábado) en que cada grupo tiene cada actividad.
    Grupo 1: martes y jueves natación y P. física; viernes y sábado solo agua.
@@ -522,24 +528,49 @@ export function isScheduled(group, act, iso) {
   return sch[act].includes(new Date(y, m - 1, d).getDay());
 }
 
+/** Asistencia día a día del mes. Solo cuentan los días en que se tomó asistencia
+   (al menos un nadador de la lista marcado). act: 'natacion' | 'fisica' | 'any'
+   ('any' = presente en natación o P. física, cada nadador cuenta una vez por día).
+   Cada día se compara solo contra los nadadores que debían entrenar esa actividad
+   según el calendario de su grupo (exp), más quien asistió fuera de calendario.
+   avg = promedio de presentes por día; expAvg = promedio de esperados por día;
+   pct = total presentes / total esperados. */
+export function dailyAttendance(st, swimmers, ym, act) {
+  const acts = act === 'any' ? ['natacion', 'fisica'] : [act];
+  const maps = acts.map(a => attMap(st, a));
+  const iso = (d) => `${ym}-${String(d).padStart(2, '0')}`;
+  const present = {}; // día → Set de ids presentes
+  swimmers.forEach(s => {
+    maps.forEach(m => {
+      const a = m[s.id] || {};
+      Object.keys(a).forEach(k => { if (k.startsWith(ym) && a[k]) (present[+k.slice(8)] = present[+k.slice(8)] || new Set()).add(s.id); });
+    });
+  });
+  const days = Object.keys(present).map(Number).sort((a, b) => a - b).map(d => {
+    const ids = present[d];
+    const exp = swimmers.filter(s => ids.has(s.id) || acts.some(a => isScheduled(s.group, a, iso(d)))).length;
+    return { d, iso: iso(d), n: ids.size, exp, rate: exp ? ids.size / exp : 0 };
+  });
+  const total = days.reduce((n, x) => n + x.n, 0);
+  const totalExp = days.reduce((n, x) => n + x.exp, 0);
+  const avg = days.length ? total / days.length : 0;
+  const expAvg = days.length ? totalExp / days.length : swimmers.length;
+  const better = (x, y) => x.rate - y.rate || x.n - y.n;
+  const best = days.reduce((b, x) => (!b || better(x, b) > 0 ? x : b), null);
+  const worst = days.reduce((w, x) => (!w || better(x, w) < 0 ? x : w), null);
+  return { days, total, totalExp, avg, expAvg, size: swimmers.length, pct: totalExp ? Math.round((total / totalExp) * 100) : 0, best, worst };
+}
+
 /** Estadística mensual de asistencia para una actividad.
-   Para cada nadador, los días posibles son los días con actividad de su grupo
-   (entrenamiento registrado o alguna asistencia marcada en el grupo) que caen en
-   su calendario. Si asistió un día fuera del calendario, ese día también cuenta. */
+   Para cada nadador, los días posibles son los días en que se tomó asistencia
+   en su grupo y que caen en su calendario. Si asistió un día fuera del
+   calendario, ese día también cuenta. `daily` trae el promedio por día. */
 export function monthAttendance(st, swimmers, ym, act) {
   const map = attMap(st, act);
   const key = (d) => `${ym}-${String(d).padStart(2, '0')}`;
   const all = new Set();
   const byGroup = {};
   const daysOf = (g) => (byGroup[g] = byGroup[g] || new Set());
-  (st.trainings || []).forEach(t => {
-    if (!t.fecha || !t.fecha.startsWith(ym) || actividadOf(t) !== act) return;
-    const d = +t.fecha.slice(8);
-    all.add(d);
-    const g = normalizeGroup(t.grupo);
-    if (g === 'TODOS' || !g) GROUPS.forEach(x => daysOf(x.id).add(d));
-    else daysOf(g).add(d);
-  });
   swimmers.forEach(s => {
     const a = map[s.id] || {};
     Object.keys(a).forEach(k => {
@@ -556,5 +587,6 @@ export function monthAttendance(st, swimmers, ym, act) {
   });
   const present = rows.reduce((n, r) => n + r.present, 0);
   const possible = rows.reduce((n, r) => n + r.possible, 0);
-  return { activeDays, rows, present, possible, pct: possible ? Math.round((present / possible) * 100) : 0 };
+  const daily = dailyAttendance(st, swimmers, ym, act);
+  return { activeDays, rows, present, possible, daily, pct: daily.pct };
 }

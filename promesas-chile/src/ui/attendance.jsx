@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { DB } from '../lib/db.js';
 import {
   Icon, Avatar, useStore, useToast, Button, Empty,
-  MONTHS, WD_SHORT, todayISO,
+  MONTHS, WD_SHORT, todayISO, fmtAvg, fmtDayShort,
 } from './components.jsx';
 
 
@@ -53,6 +53,10 @@ function AttendanceView() {
 
   const statsN = DB.monthAttendance(st, swimmers, ym, 'natacion');
   const statsF = DB.monthAttendance(st, swimmers, ym, 'fisica');
+  // Día con asistencia más alta y más baja (presente en natación o P. física).
+  const dayAny = DB.dailyAttendance(st, swimmers, ym, 'any');
+  const dayLine = (x) => x ? `${x.n}/${x.exp} · ${fmtDayShort(x.iso)}` : '—';
+  const avgSub = (d) => `Promedio ${fmtAvg(d.avg)}/${fmtAvg(d.expAvg)} por día · ${d.days.length} ${d.days.length === 1 ? 'día' : 'días'}`;
 
   const markColumn = (act, day) => {
     const val = dayTotal(act, day) < swimmers.length;
@@ -86,10 +90,11 @@ function AttendanceView() {
       </div>
 
       <div className="stat-grid" style={{ marginBottom: 20 }}>
-        {statCard('Tasa · Natación', pctValue(statsN.pct), 'wave', 'var(--cyan-050)', 'var(--cyan-700)', `${statsN.present} de ${statsN.possible} posibles`)}
-        {statCard('Tasa · Prep. física', pctValue(statsF.pct), 'trend', '#efeafb', '#7B5BD6', `${statsF.present} de ${statsF.possible} posibles`)}
-        {statCard('Asistencias del mes', statsN.present + statsF.present, 'checkSquare', 'var(--green-bg)', 'var(--green)', `Natación ${statsN.present} · P. física ${statsF.present}`)}
-        {statCard('Días con entrenamiento', new Set([...trainingDays.natacion, ...trainingDays.fisica]).size, 'calendar', 'var(--amber-bg)', 'var(--amber)', `Natación ${trainingDays.natacion.size} · P. física ${trainingDays.fisica.size}`)}
+        {statCard('Tasa · Natación', pctValue(statsN.daily.pct), 'wave', 'var(--cyan-050)', 'var(--cyan-700)', avgSub(statsN.daily))}
+        {statCard('Tasa · Prep. física', pctValue(statsF.daily.pct), 'trend', '#efeafb', '#7B5BD6', avgSub(statsF.daily))}
+        {statCard('Asistencia del mes', dayAny.best ? <>{dayAny.best.n}<span style={{ fontSize: 20, color: 'var(--slate-400)' }}> / {dayAny.worst.n}</span></> : '—', 'checkSquare', 'var(--green-bg)', 'var(--green)',
+          <>Más alta: {dayLine(dayAny.best)}<br />Más baja: {dayLine(dayAny.worst)}</>)}
+        {statCard('Días con asistencia', dayAny.days.length, 'calendar', 'var(--amber-bg)', 'var(--amber)', `Natación ${statsN.daily.days.length} · P. física ${statsF.daily.days.length}`)}
       </div>
 
       <div className="card">

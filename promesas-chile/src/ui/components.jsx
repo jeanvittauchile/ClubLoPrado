@@ -203,7 +203,26 @@ export function fmtDateLong(iso) {
   if (isNaN(d.getTime())) return '—';
   return `${WD_SHORT[d.getDay()]} ${d.getDate()} de ${MONTHS[d.getMonth()]}, ${d.getFullYear()}`;
 }
-export function todayISO() { return new Date().toISOString().slice(0, 10); }
+export function todayISO() { return DB.localISO(); }
+/** "Mar 3/11" a partir de YYYY-MM-DD. */
+export function fmtDayShort(iso) {
+  if (!iso) return '—';
+  const [y, m, d] = iso.split('-').map(Number);
+  return `${WD_SHORT[new Date(y, m - 1, d).getDay()]} ${d}/${m}`;
+}
+/** Promedio con un decimal: 20,5 */
+export const fmtAvg = (n) => (+n || 0).toLocaleString('es-CL', { maximumFractionDigits: 1 });
+/** Fecha de hoy que se actualiza sola a la medianoche local. */
+export function useToday() {
+  const [today, setToday] = useState(todayISO());
+  useEffect(() => {
+    const now = new Date();
+    const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 5);
+    const id = setTimeout(() => setToday(todayISO()), next - now);
+    return () => clearTimeout(id);
+  }, [today]);
+  return today;
+}
 export function fmtTime(secs) {
   if (secs == null) return '—';
   const neg = secs < 0;

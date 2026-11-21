@@ -3,7 +3,7 @@ import { DB } from '../lib/db.js';
 import {
   Icon, Avatar, avatarColor, getInitials,
   useStore, useToast, Button, Modal, Field, Empty, Confirm,
-  MONTHS, WD_SHORT, fmtDate, fmtDateLong, todayISO, fmtTime, parseTime, TR_TYPE_COLOR,
+  MONTHS, WD_SHORT, fmtDate, fmtDateLong, todayISO, useToday, fmtAvg, fmtTime, parseTime, TR_TYPE_COLOR,
 } from './components.jsx';
 
 
@@ -12,7 +12,7 @@ import {
    ============================================================ */
 function Dashboard({ go }) {
   const st = useStore();
-  const today = todayISO();
+  const today = useToday();
   const ym = today.slice(0, 7);
 
   const nadadores = st.swimmers.slice();
@@ -55,8 +55,10 @@ function Dashboard({ go }) {
 
   const stats = [
     { label: 'Nadadores', value: nadadores.length, icon: 'users', bg: 'var(--cyan-050)', fg: 'var(--cyan-700)', sub: `${g1.length} Grupo 1 · ${g2.length} Grupo 2` },
-    { label: 'Asistencia del mes · Natación', value: statsN.pct + '%', icon: 'wave', bg: 'var(--green-bg)', fg: 'var(--green)', sub: `${statsN.present} asistencias` },
-    { label: 'Asistencia del mes · P. física', value: statsF.pct + '%', icon: 'trend', bg: '#efeafb', fg: '#7B5BD6', sub: `${statsF.present} asistencias` },
+    { label: 'Asistencia del mes · Natación', value: statsN.daily.pct + '%', icon: 'wave', bg: 'var(--green-bg)', fg: 'var(--green)',
+      sub: <>Promedio {fmtAvg(statsN.daily.avg)}/{fmtAvg(statsN.daily.expAvg)} por día<br />{statsN.daily.days.length} {statsN.daily.days.length === 1 ? 'día' : 'días'} con asistencia</> },
+    { label: 'Asistencia del mes · P. física', value: statsF.daily.pct + '%', icon: 'trend', bg: '#efeafb', fg: '#7B5BD6',
+      sub: <>Promedio {fmtAvg(statsF.daily.avg)}/{fmtAvg(statsF.daily.expAvg)} por día<br />{statsF.daily.days.length} {statsF.daily.days.length === 1 ? 'día' : 'días'} con asistencia</> },
     { label: 'Presentes hoy', value: `${nadadores.filter(isPresent).length}/${nadadores.length}`, icon: 'checkSquare', bg: 'var(--amber-bg)', fg: 'var(--amber)',
       sub: <>Grupo 1 {g1.filter(isPresent).length}/{g1.length} · Grupo 2 {g2.filter(isPresent).length}/{g2.length}<br />Natación {presN} · P. física {presF}</> },
   ];
